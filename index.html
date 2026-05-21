@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Photobooth</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Library html2canvas untuk download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">📸</span>
+            <h1>PhotoBooth</h1>
+        </div>
+        <button class="btn-theme" id="themeBtn" onclick="toggleThemePanel()">
+            🎨 Tema
+        </button>
+    </header>
+
+    <!-- ===== PANEL TEMA (Tersembunyi) ===== -->
+    <div class="theme-panel" id="themePanel">
+        <h3>Pilih Tema</h3>
+        <div class="theme-options">
+            <button class="theme-btn" data-theme="pastel" onclick="changeTheme('pastel')">🌸 Pastel</button>
+            <button class="theme-btn" data-theme="dark" onclick="changeTheme('dark')">🌑 Dark</button>
+            <button class="theme-btn" data-theme="retro" onclick="changeTheme('retro')">📻 Retro</button>
+            <button class="theme-btn" data-theme="cyber" onclick="changeTheme('cyber')">🌆 Cyber</button>
+            <button class="theme-btn" data-theme="korean" onclick="changeTheme('korean')">🇰🇷 Korean</button>
+            <button class="theme-btn" data-theme="minimal" onclick="changeTheme('minimal')">⬜ Minimal</button>
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTAINER ===== -->
+    <main class="main-container">
+        
+        <!-- ===== KAMERA & KONTROL ===== -->
+        <section class="camera-section">
+            <div class="camera-wrapper">
+                <!-- Kamera Preview -->
+                <video id="cameraPreview" autoplay playsinline></video>
+                
+                <!-- Countdown Display -->
+                <div class="countdown-display" id="countdownDisplay">
+                    <span class="countdown-number"></span>
+                </div>
+                
+                <!-- Flash Effect -->
+                <div class="flash-overlay" id="flashOverlay"></div>
+                
+                <!-- Tanggal & Nama Display -->
+                <div class="photo-meta-overlay" id="photoMetaOverlay">
+                    <span class="meta-name"></span>
+                    <span class="meta-date"></span>
+                </div>
+            </div>
+
+            <!-- Kontrol Panel -->
+            <div class="controls-panel">
+                <!-- Input Data -->
+                <div class="input-group">
+                    <input type="text" id="userName" placeholder="Masukkan nama..." maxlength="20">
+                    <input type="text" id="photoDate" placeholder="Tanggal" readonly>
+                </div>
+
+                <!-- Pengaturan Layout -->
+                <div class="setting-group">
+                    <label>Layout:</label>
+                    <div class="layout-options">
+                        <button class="layout-btn active" data-layout="2" onclick="selectLayout(2)">2</button>
+                        <button class="layout-btn" data-layout="3" onclick="selectLayout(3)">3</button>
+                        <button class="layout-btn" data-layout="4" onclick="selectLayout(4)">4</button>
+                        <button class="layout-btn" data-layout="6" onclick="selectLayout(6)">6</button>
+                    </div>
+                </div>
+
+                <!-- Pengaturan Filter -->
+                <div class="setting-group">
+                    <label>Filter:</label>
+                    <select id="filterSelect" onchange="changeFilter(this.value)">
+                        <option value="normal">Normal</option>
+                        <option value="grayscale">Black & White</option>
+                        <option value="sepia">Sepia</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="cool">Cool Tone</option>
+                    </select>
+                </div>
+
+                <!-- Pengaturan Sticker -->
+                <div class="setting-group">
+                    <label>Sticker:</label>
+                    <div class="sticker-options">
+                        <button class="sticker-btn" data-sticker="heart" onclick="selectSticker('❤️')">❤️</button>
+                        <button class="sticker-btn" data-sticker="star" onclick="selectSticker('⭐')">⭐</button>
+                        <button class="sticker-btn" data-sticker="smile" onclick="selectSticker('😊')">😊</button>
+                        <button class="sticker-btn" data-sticker="flower" onclick="selectSticker('🌸')">🌸</button>
+                        <button class="sticker-btn" data-sticker="none" onclick="selectSticker('')">❌</button>
+                    </div>
+                </div>
+
+                <!-- Tombol Ambil Foto -->
+                <button class="btn-capture" id="captureBtn" onclick="startCapture()">
+                    <span class="capture-icon">📷</span>
+                    <span>Ambil Foto</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ===== GALLERY HASIL FOTO ===== -->
+        <section class="gallery-section">
+            <h2>Hasil PhotoBooth</h2>
+            <div class="photo-layout" id="photoLayout">
+                <!-- Foto-foto akan muncul di sini -->
+            </div>
+            
+            <!-- Tombol Download & Reset -->
+            <div class="action-buttons">
+                <button class="btn-download" onclick="downloadPhotos()">
+                    💾 Download
+                </button>
+                <button class="btn-reset" onclick="resetPhotos()">
+                    🔄 Reset
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===== HIDDEN CANVAS (Untuk proses gambar) ===== -->
+    <canvas id="photoCanvas" style="display: none;"></canvas>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <p>Modern Photobooth © 2024 | Dibuat dengan ❤️</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
