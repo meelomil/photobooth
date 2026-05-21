@@ -5,70 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Photobooth</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Font Google -->
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Library html2canvas untuk download -->
+    <!-- html2canvas untuk download -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     
-    <!-- ===== HEADER ===== -->
+    <!-- HEADER -->
     <header class="header">
         <div class="logo">
             <span class="logo-icon">📸</span>
             <h1>PhotoBooth</h1>
         </div>
-        <button class="btn-theme" id="themeBtn" onclick="toggleThemePanel()">
-            🎨 Tema
-        </button>
+        <div class="header-controls">
+            <button class="btn-theme" id="themeBtn" onclick="toggleThemePanel()">
+                🎨 Tema
+            </button>
+            <button class="btn-help" onclick="showHelp()">
+                ❓ Help
+            </button>
+        </div>
     </header>
 
-    <!-- ===== PANEL TEMA (Tersembunyi) ===== -->
+    <!-- PANEL TEMA -->
     <div class="theme-panel" id="themePanel">
         <h3>Pilih Tema</h3>
         <div class="theme-options">
-            <button class="theme-btn" data-theme="pastel" onclick="changeTheme('pastel')">🌸 Pastel</button>
+            <button class="theme-btn active" data-theme="pastel" onclick="changeTheme('pastel')">🌸 Pastel</button>
             <button class="theme-btn" data-theme="dark" onclick="changeTheme('dark')">🌑 Dark</button>
             <button class="theme-btn" data-theme="retro" onclick="changeTheme('retro')">📻 Retro</button>
             <button class="theme-btn" data-theme="cyber" onclick="changeTheme('cyber')">🌆 Cyber</button>
             <button class="theme-btn" data-theme="korean" onclick="changeTheme('korean')">🇰🇷 Korean</button>
             <button class="theme-btn" data-theme="minimal" onclick="changeTheme('minimal')">⬜ Minimal</button>
         </div>
+        <button class="btn-close" onclick="toggleThemePanel()">✕ Tutup</button>
     </div>
 
-    <!-- ===== MAIN CONTAINER ===== -->
+    <!-- ALERT ERROR -->
+    <div class="alert-error" id="alertError">
+        <span id="alertMessage"></span>
+        <button onclick="closeAlert()">✕</button>
+    </div>
+
+    <!-- MAIN CONTAINER -->
     <main class="main-container">
         
-        <!-- ===== KAMERA & KONTROL ===== -->
+        <!-- KAMERA SECTION -->
         <section class="camera-section">
             <div class="camera-wrapper">
-                <!-- Kamera Preview -->
-                <video id="cameraPreview" autoplay playsinline></video>
+                <video id="cameraPreview" autoplay playsinline muted></video>
                 
-                <!-- Countdown Display -->
+                <!-- OVERLAYS -->
                 <div class="countdown-display" id="countdownDisplay">
                     <span class="countdown-number"></span>
                 </div>
                 
-                <!-- Flash Effect -->
                 <div class="flash-overlay" id="flashOverlay"></div>
                 
-                <!-- Tanggal & Nama Display -->
+                <div class="camera-status" id="cameraStatus">
+                    <span>📷 Kamera Loading...</span>
+                </div>
+                
                 <div class="photo-meta-overlay" id="photoMetaOverlay">
                     <span class="meta-name"></span>
                     <span class="meta-date"></span>
                 </div>
             </div>
 
-            <!-- Kontrol Panel -->
+            <!-- KONTROLS -->
             <div class="controls-panel">
-                <!-- Input Data -->
+                <!-- INPUT -->
                 <div class="input-group">
-                    <input type="text" id="userName" placeholder="Masukkan nama..." maxlength="20">
+                    <input type="text" id="userName" placeholder="Nama kamu..." maxlength="20">
                     <input type="text" id="photoDate" placeholder="Tanggal" readonly>
                 </div>
 
-                <!-- Pengaturan Layout -->
+                <!-- LAYOUT -->
                 <div class="setting-group">
                     <label>Layout:</label>
                     <div class="layout-options">
@@ -79,19 +92,19 @@
                     </div>
                 </div>
 
-                <!-- Pengaturan Filter -->
+                <!-- FILTER -->
                 <div class="setting-group">
                     <label>Filter:</label>
                     <select id="filterSelect" onchange="changeFilter(this.value)">
                         <option value="normal">Normal</option>
-                        <option value="grayscale">Black & White</option>
+                        <option value="grayscale">B&W</option>
                         <option value="sepia">Sepia</option>
                         <option value="vintage">Vintage</option>
-                        <option value="cool">Cool Tone</option>
+                        <option value="cool">Cool</option>
                     </select>
                 </div>
 
-                <!-- Pengaturan Sticker -->
+                <!-- STICKER -->
                 <div class="setting-group">
                     <label>Sticker:</label>
                     <div class="sticker-options">
@@ -99,26 +112,35 @@
                         <button class="sticker-btn" data-sticker="star" onclick="selectSticker('⭐')">⭐</button>
                         <button class="sticker-btn" data-sticker="smile" onclick="selectSticker('😊')">😊</button>
                         <button class="sticker-btn" data-sticker="flower" onclick="selectSticker('🌸')">🌸</button>
-                        <button class="sticker-btn" data-sticker="none" onclick="selectSticker('')">❌</button>
+                        <button class="sticker-btn active" data-sticker="none" onclick="selectSticker('')">❌</button>
                     </div>
                 </div>
 
-                <!-- Tombol Ambil Foto -->
+                <!-- CAPTURE -->
                 <button class="btn-capture" id="captureBtn" onclick="startCapture()">
                     <span class="capture-icon">📷</span>
                     <span>Ambil Foto</span>
                 </button>
+                
+                <!-- PROGRESS -->
+                <div class="capture-progress">
+                    <span id="photoProgress">0 / 2</span>
+                </div>
             </div>
         </section>
 
-        <!-- ===== GALLERY HASIL FOTO ===== -->
+        <!-- GALLERY SECTION -->
         <section class="gallery-section">
             <h2>Hasil PhotoBooth</h2>
             <div class="photo-layout" id="photoLayout">
-                <!-- Foto-foto akan muncul di sini -->
+                <!-- Foto akan muncul di sini -->
+                <div class="empty-state" id="emptyState">
+                    <span>📸</span>
+                    <p>Belum ada foto</p>
+                    <p class="hint">Klik "Ambil Foto" untuk mulai</p>
+                </div>
             </div>
             
-            <!-- Tombol Download & Reset -->
             <div class="action-buttons">
                 <button class="btn-download" onclick="downloadPhotos()">
                     💾 Download
@@ -130,13 +152,58 @@
         </section>
     </main>
 
-    <!-- ===== HIDDEN CANVAS (Untuk proses gambar) ===== -->
+    <!-- HIDDEN CANVAS -->
     <canvas id="photoCanvas" style="display: none;"></canvas>
 
-    <!-- ===== FOOTER ===== -->
+    <!-- FOOTER -->
     <footer class="footer">
-        <p>Modern Photobooth © 2024 | Dibuat dengan ❤️</p>
+        <p>Modern Photobooth © 2024 | <a href="#" onclick="showHelp(); return false;">Panduan Edit</a></p>
     </footer>
+
+    <!-- MODAL HELP -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeHelp()">✕</button>
+            <h2>📖 Panduan Edit PhotoBooth</h2>
+            
+            <div class="help-section">
+                <h3>1. Cara Mengganti Tema</h3>
+                <p>Buka file <code>script.js</code>, cari bagian <strong>"// DEFINISI TEMA"</strong></p>
+                <pre>
+// Contoh mengubah warna tema:
+pastel: {
+    bgPrimary: '#ffeef8',      // Ganti warna background
+    accentColor: '#ff6b9d',   // Ganti warna aksen
+    ...
+}</pre>
+            </div>
+            
+            <div class="help-section">
+                <h3>2. Cara Menambah Tema Baru</h3>
+                <pre>
+// Di script.js, tambahkan tema baru:
+namaTemaBaru: {
+    bgPrimary: '#warna',
+    accentColor: '#warna',
+    // ... lanjutkan dengan variabel lain
+},
+
+// Lalu tambahkan tombol di index.html:
+// &lt;button onclick="changeTheme('namaTemaBaru')"&gt;Nama&lt;/button&gt;</pre>
+            </div>
+            
+            <div class="help-section">
+                <h3>3. Cara Menambah Sticker</h3>
+                <p>Tambahkan di bagian sticker-options di index.html:</p>
+                <pre>&lt;button onclick="selectSticker('🦄')"&gt;🦄&lt;/button&gt;</pre>
+            </div>
+            
+            <div class="help-section">
+                <h3>4. Cara Mengganti Layout</h3>
+                <p>Layout bisa 2, 3, 4, atau 6 foto. Untuk-edit CSS nya, cari di style.css bagian <strong>.photo-container</strong></p>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
