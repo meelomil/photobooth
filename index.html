@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cutie Booth ✨ Photobooth Lucu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- floating background stickers -->
+  <div class="floaters" aria-hidden="true">
+    <span class="floater f1">✦</span>
+    <span class="floater f2">♡</span>
+    <span class="floater f3">✧</span>
+    <span class="floater f4">☆</span>
+    <span class="floater f5">♡</span>
+    <span class="floater f6">✦</span>
+    <span class="floater f7">✧</span>
+    <span class="floater f8">☆</span>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">☆ selamat datang di ☆</p>
+    <h1>Cutie Booth <span>✨</span></h1>
+    <p class="tagline">bikin strip foto lucu-mu sendiri, langsung dari browser!</p>
+  </header>
+
+  <main class="layout-wrap">
+
+    <!-- CONTROL PANEL -->
+    <section class="panel">
+      <div class="block">
+        <h2>① Pilih Layout</h2>
+        <p class="hint">Berapa foto & susunannya</p>
+        <div class="option-grid" id="layoutOptions">
+          <button class="opt-btn active" data-layout="strip3">Strip 3<small>1 kolom</small></button>
+          <button class="opt-btn" data-layout="strip4">Strip 4<small>1 kolom</small></button>
+          <button class="opt-btn" data-layout="grid2x2">Grid 2x2<small>4 foto</small></button>
+          <button class="opt-btn" data-layout="polaroid">Polaroid<small>1 foto</small></button>
+        </div>
+        <input type="text" id="captionField" class="caption-input" placeholder="tulis caption polaroid-mu..." maxlength="28">
+      </div>
+
+      <div class="block">
+        <h2>② Pilih Filter</h2>
+        <p class="hint">Efek warna foto</p>
+        <div class="option-grid" id="filterOptions">
+          <button class="opt-btn active" data-filter="none">Normal</button>
+          <button class="opt-btn" data-filter="bw">B&amp;W</button>
+          <button class="opt-btn" data-filter="vintage">Vintage</button>
+          <button class="opt-btn" data-filter="warm">Warm</button>
+          <button class="opt-btn" data-filter="cool">Cool</button>
+          <button class="opt-btn" data-filter="soft">Dreamy</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>③ Tema &amp; Stiker</h2>
+        <p class="hint">Warna bingkai + stiker lucu</p>
+        <div class="swatch-row" id="themeOptions">
+          <button class="swatch active" style="background:#ffd6e8;" data-theme="pink" title="Sweet Pink"></button>
+          <button class="swatch" style="background:#e3d6ff;" data-theme="lavender" title="Lilac Dream"></button>
+          <button class="swatch" style="background:#d2f5e3;" data-theme="mint" title="Mint Cream"></button>
+          <button class="swatch" style="background:#fff2b8;" data-theme="butter" title="Butter Yellow"></button>
+          <button class="swatch" style="background:#ffe0cc;" data-theme="peach" title="Peachy"></button>
+          <button class="swatch" style="background:#fdf6ec;" data-theme="cream" title="Vanilla"></button>
+        </div>
+      </div>
+
+      <button class="start-btn" id="startBtn">📸 Mulai Foto!</button>
+    </section>
+
+    <!-- CAMERA STAGE -->
+    <section class="stage">
+      <div class="stage-head">
+        <span class="rec"><span class="blink"></span> LIVE</span>
+        <span id="shotLabel">siap yaa~</span>
+      </div>
+      <div class="video-frame">
+        <video id="video" autoplay muted playsinline></video>
+        <div class="countdown" id="countdown">3</div>
+        <div class="flash" id="flash"></div>
+      </div>
+      <div class="progress-row" id="progressRow"></div>
+      <p class="stage-note">jangan lupa izinkan akses kamera ya! 🎀</p>
+    </section>
+
+  </main>
+
+  <!-- RESULT -->
+  <section class="result-wrap" id="resultWrap">
+    <h2>✨ hasil photobooth kamu ✨</h2>
+    <div class="result-frame">
+      <canvas id="resultCanvas"></canvas>
+    </div>
+    <div class="result-actions">
+      <button id="downloadBtn">⬇ Download</button>
+      <button id="retakeBtn">↺ Ambil Ulang</button>
+    </div>
+  </section>
+
+  <canvas id="workCanvas" style="display:none;"></canvas>
+
+  <footer>
+    made with ♡ — cutie booth
+  </footer>
+
+<script src="script.js"></script>
+</body>
+</html>
