@@ -10,7 +10,6 @@
 </head>
 <body>
 
-  <!-- floating stickers background -->
   <div class="floaters" aria-hidden="true">
     <span class="floater f1">✦</span>
     <span class="floater f2">♡</span>
@@ -22,14 +21,13 @@
     <span class="floater f8">☆</span>
   </div>
 
-  <!-- ===================== SCREEN 1: HOME ===================== -->
+  <!-- ===== SCREEN 1: HOME ===== -->
   <div class="screen active" id="screenHome">
     <header class="hero">
       <p class="eyebrow">☆ selamat datang di ☆</p>
       <h1>Caca Booth <span>🎀</span></h1>
       <p class="tagline">foto lucu sendirian atau bareng teman secara online!</p>
     </header>
-
     <div class="mode-cards">
       <button class="mode-card" id="btnSolo">
         <span class="mode-icon">🧍</span>
@@ -45,7 +43,7 @@
     </div>
   </div>
 
-  <!-- ===================== SCREEN 2: TOGETHER LOBBY ===================== -->
+  <!-- ===== SCREEN 2: LOBBY ===== -->
   <div class="screen" id="screenLobby">
     <header class="hero small">
       <h1>Caca Booth 🎀</h1>
@@ -53,11 +51,11 @@
     </header>
 
     <div class="lobby-wrap">
-      <div class="lobby-card" id="lobbyCreate">
+      <!-- BUAT ROOM -->
+      <div class="lobby-card">
         <h2>① Buat Room Baru</h2>
         <p>Kamu jadi host, teman kamu tinggal masukin kode</p>
         <button class="btn-primary" id="btnCreateRoom">Buat Room 🎉</button>
-
         <div class="room-code-display" id="roomCodeDisplay" style="display:none">
           <p class="room-label">Kasih kode ini ke temanmu:</p>
           <div class="room-code" id="roomCodeText">------</div>
@@ -68,13 +66,12 @@
 
       <div class="lobby-divider">atau</div>
 
-      <div class="lobby-card" id="lobbyJoin">
+      <!-- GABUNG ROOM — tombol di bawah input, bukan di sampingnya -->
+      <div class="lobby-card">
         <h2>② Gabung Room</h2>
-        <p>Masukkan kode dari temanmu</p>
-        <div class="join-row">
-          <input type="text" id="joinCodeInput" class="code-input" placeholder="contoh: ABC123" maxlength="6">
-          <button class="btn-primary" id="btnJoinRoom">Masuk 🚪</button>
-        </div>
+        <p>Masukkan kode 6 huruf dari temanmu</p>
+        <input type="text" id="joinCodeInput" class="code-input" placeholder="ABC123" maxlength="6">
+        <button class="btn-primary btn-join" id="btnJoinRoom">Masuk 🚪</button>
         <p class="error-msg" id="joinError"></p>
       </div>
     </div>
@@ -82,7 +79,7 @@
     <button class="btn-back" id="btnBackHome">← Kembali</button>
   </div>
 
-  <!-- ===================== SCREEN 3: BOOTH (SOLO & TOGETHER) ===================== -->
+  <!-- ===== SCREEN 3: BOOTH ===== -->
   <div class="screen" id="screenBooth">
     <header class="hero small">
       <h1>Caca Booth 🎀</h1>
@@ -91,19 +88,33 @@
 
     <div class="booth-wrap">
 
-      <!-- CAMERA AREA -->
+      <!-- KAMERA -->
       <div class="cameras" id="camerasArea">
-        <!-- Solo: 1 camera. Together: 2 cameras (you + peer) -->
+
         <div class="cam-box" id="camYou">
-          <div class="cam-label" id="camYouLabel">kamu</div>
+          <div class="cam-top-bar">
+            <span class="cam-label" id="camYouLabel">kamu</span>
+            <!-- tombol switch kamera on/off -->
+            <button class="cam-toggle" id="camToggleBtn" title="Nyala/Matikan Kamera">
+              <span id="camToggleIcon">📷</span> <span id="camToggleText">Matikan</span>
+            </button>
+          </div>
           <div class="video-frame">
             <video id="videoYou" autoplay muted playsinline></video>
+            <div class="cam-off-overlay" id="camOffOverlay" style="display:none">
+              <span>📷 kamera mati</span>
+            </div>
             <div class="countdown" id="countdown"></div>
             <div class="flash" id="flash"></div>
           </div>
+          <!-- TOMBOL JEPRET langsung di bawah kamera -->
+          <button class="shutter-btn" id="shutterBtn">📸 Jepret!</button>
         </div>
+
         <div class="cam-box hidden" id="camPeer">
-          <div class="cam-label">teman</div>
+          <div class="cam-top-bar">
+            <span class="cam-label">teman</span>
+          </div>
           <div class="video-frame peer-frame">
             <video id="videoPeer" autoplay playsinline></video>
             <div class="connecting-overlay" id="connectingOverlay">
@@ -111,15 +122,15 @@
             </div>
           </div>
         </div>
+
       </div>
 
-      <!-- PROGRESS DOTS -->
+      <!-- PROGRESS + STATUS -->
       <div class="progress-row" id="progressRow"></div>
       <p class="stage-note" id="stageNote">pilih layout & tekan jepret!</p>
 
       <!-- CONTROLS PANEL -->
       <div class="controls-panel">
-
         <div class="ctrl-section">
           <label>Layout</label>
           <div class="option-grid" id="layoutOptions">
@@ -155,15 +166,14 @@
             <button class="swatch" style="background:#fff" data-theme="clean" title="Clean White"></button>
           </div>
         </div>
-
-        <button class="shutter-btn" id="shutterBtn">📸 Jepret!</button>
       </div>
+
     </div>
 
     <button class="btn-back" id="btnBackBooth">← Kembali</button>
   </div>
 
-  <!-- ===================== SCREEN 4: RESULT ===================== -->
+  <!-- ===== SCREEN 4: RESULT ===== -->
   <div class="screen" id="screenResult">
     <header class="hero small">
       <h1>✨ hasil foto ✨</h1>
@@ -179,7 +189,6 @@
   </div>
 
   <canvas id="workCanvas" style="display:none"></canvas>
-
 <script src="script.js"></script>
 </body>
 </html>
