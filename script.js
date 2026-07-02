@@ -85,15 +85,21 @@ const camOffOverlay  = document.getElementById('camOffOverlay');
 
 let camEnabled = true;
 
-camToggleBtn.addEventListener('click', () => {
+// pakai getElementById langsung di dalam event agar aman
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#camToggleBtn')) return;
   camEnabled = !camEnabled;
   if (localStream) {
     localStream.getVideoTracks().forEach(t => { t.enabled = camEnabled; });
   }
-  camOffOverlay.style.display  = camEnabled ? 'none' : 'flex';
-  camToggleIcon.textContent    = camEnabled ? '📷' : '🚫';
-  camToggleText.textContent    = camEnabled ? 'Matikan' : 'Nyalakan';
-  camToggleBtn.classList.toggle('off', !camEnabled);
+  const overlay  = document.getElementById('camOffOverlay');
+  const icon     = document.getElementById('camToggleIcon');
+  const text     = document.getElementById('camToggleText');
+  const btn      = document.getElementById('camToggleBtn');
+  if (overlay) overlay.style.display = camEnabled ? 'none' : 'flex';
+  if (icon)    icon.textContent      = camEnabled ? '📷' : '🚫';
+  if (text)    text.textContent      = camEnabled ? 'Matikan' : 'Nyalakan';
+  if (btn)     btn.classList.toggle('off', !camEnabled);
 });
 
 // ===== Screen helpers =====
@@ -277,10 +283,14 @@ async function startBooth() {
   peerPhotos = {};
   // reset toggle kamera ke ON
   camEnabled = true;
-  camOffOverlay.style.display = 'none';
-  camToggleIcon.textContent   = '📷';
-  camToggleText.textContent   = 'Matikan';
-  camToggleBtn.classList.remove('off');
+  const _ov  = document.getElementById('camOffOverlay');
+  const _ic  = document.getElementById('camToggleIcon');
+  const _tx  = document.getElementById('camToggleText');
+  const _btn = document.getElementById('camToggleBtn');
+  if (_ov)  _ov.style.display = 'none';
+  if (_ic)  _ic.textContent   = '📷';
+  if (_tx)  _tx.textContent   = 'Matikan';
+  if (_btn) _btn.classList.remove('off');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:960 }, audio:false });
     videoYou.srcObject = localStream;
