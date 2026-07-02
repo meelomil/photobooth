@@ -77,7 +77,24 @@ const shutterBtn   = document.getElementById('shutterBtn');
 const captionField = document.getElementById('captionField');
 const resultCanvas = document.getElementById('resultCanvas');
 const workCanvas   = document.getElementById('workCanvas');
-const camYouLabel  = document.getElementById('camYouLabel');
+const camYouLabel    = document.getElementById('camYouLabel');
+const camToggleBtn   = document.getElementById('camToggleBtn');
+const camToggleIcon  = document.getElementById('camToggleIcon');
+const camToggleText  = document.getElementById('camToggleText');
+const camOffOverlay  = document.getElementById('camOffOverlay');
+
+let camEnabled = true;
+
+camToggleBtn.addEventListener('click', () => {
+  camEnabled = !camEnabled;
+  if (localStream) {
+    localStream.getVideoTracks().forEach(t => { t.enabled = camEnabled; });
+  }
+  camOffOverlay.style.display  = camEnabled ? 'none' : 'flex';
+  camToggleIcon.textContent    = camEnabled ? '📷' : '🚫';
+  camToggleText.textContent    = camEnabled ? 'Matikan' : 'Nyalakan';
+  camToggleBtn.classList.toggle('off', !camEnabled);
+});
 
 // ===== Screen helpers =====
 function showScreen(id) {
@@ -258,6 +275,12 @@ async function startBooth() {
   buildProgressDots();
   capturedPhotos = [];
   peerPhotos = {};
+  // reset toggle kamera ke ON
+  camEnabled = true;
+  camOffOverlay.style.display = 'none';
+  camToggleIcon.textContent   = '📷';
+  camToggleText.textContent   = 'Matikan';
+  camToggleBtn.classList.remove('off');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:960 }, audio:false });
     videoYou.srcObject = localStream;
