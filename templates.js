@@ -208,7 +208,136 @@ Object.values(SOLID_THEMES).forEach(t => {
   };
 });
 
-const ALL_THEMES = { ...TEMPLATES, ...SOLID_THEMES };
+// =====================================================================
+// 🖼️  CUSTOM FRAME TEMPLATES — ISI LINK GAMBAR KAMU DI SINI
+// =====================================================================
+//
+//  CARA PAKAI:
+//  1. Upload gambar frame kamu ke GitHub repo (folder /frames/)
+//  2. Ganti URL di bawah dengan link raw GitHub gambarmu
+//     Format link raw GitHub:
+//     https://raw.githubusercontent.com/USERNAME/REPO/main/frames/NAMAFILE.png
+//
+//  SYARAT GAMBAR:
+//  - Format: PNG dengan background TRANSPARAN (bagian tengah kosong/transparan)
+//    supaya foto kamu keliatan di balik frame
+//  - Ukuran disarankan: 800x1200px (portrait) atau 1200x800px (landscape)
+//  - File boleh .png atau .webp
+//
+//  ⚠️  Kalau gambar belum ada, biarkan URL-nya seperti ini →
+//      nanti tampilannya pakai warna solid dulu sebagai placeholder
+//
+// =====================================================================
+
+const CUSTOM_FRAME_URLS = {
+  // ┌─────────────────────────────────────────────────────────────┐
+  // │  GANTI 4 LINK DI BAWAH INI DENGAN LINK GAMBAR FRAMEMU      │
+  // └─────────────────────────────────────────────────────────────┘
+
+  custom1: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame1.png',
+  // ↑ Template 1 — ganti USERNAME, REPO, dan nama file
+
+  custom2: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame2.png',
+  // ↑ Template 2 — ganti USERNAME, REPO, dan nama file
+
+  custom3: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame3.png',
+  // ↑ Template 3 — ganti USERNAME, REPO, dan nama file
+
+  custom4: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame4.png',
+  // ↑ Template 4 — ganti USERNAME, REPO, dan nama file
+};
+
+// ── Label & warna teks untuk tiap custom frame ──────────────────
+// Ganti label, warna teks (text), dan warna aksen (accent) sesuai warna gambar framemu
+const CUSTOM_FRAME_META = {
+  custom1: { label: '🖼️ Tema 1', text: '#4a3b52', accent: '#ff6fa5', card: '#fff' },
+  custom2: { label: '🖼️ Tema 2', text: '#4a3b52', accent: '#b28dff', card: '#fff' },
+  custom3: { label: '🖼️ Tema 3', text: '#4a3b52', accent: '#4fd8a8', card: '#fff' },
+  custom4: { label: '🖼️ Tema 4', text: '#4a3b52', accent: '#ffcf3f', card: '#fff' },
+};
+
+// ── Cache gambar frame agar tidak load berulang ──────────────────
+const _frameCache = {};
+function loadFrameImg(url) {
+  if (_frameCache[url]) return Promise.resolve(_frameCache[url]);
+  return new Promise((res) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => { _frameCache[url] = img; res(img); };
+    img.onerror = () => res(null); // kalau gagal load, skip aja
+    img.src = url;
+  });
+}
+
+// ── Buat objek template untuk tiap custom frame ─────────────────
+const CUSTOM_FRAMES = {};
+['custom1','custom2','custom3','custom4'].forEach(key => {
+  const url  = CUSTOM_FRAME_URLS[key];
+  const meta = CUSTOM_FRAME_META[key];
+
+  CUSTOM_FRAMES[key] = {
+    label:  meta.label,
+    bg:     '#ffffff',       // background putih di belakang frame
+    card:   meta.card,
+    text:   meta.text,
+    accent: meta.accent,
+    _frameUrl: url,
+
+    // background putih bersih — gambar frame ditimpa di drawDeco
+    drawBg(ctx, W, H) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+    },
+
+    // gambar frame di ATAS semua foto (dipanggil setelah foto digambar)
+    drawDeco(ctx, W, H) {
+      const frameUrl = this._frameUrl;
+      if (!frameUrl || frameUrl.includes('USERNAME')) {
+        // Placeholder: border dashed warna aksen + label
+        ctx.strokeStyle = this.accent;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([12, 8]);
+        ctx.strokeRect(12, 12, W - 24, H - 24);
+        ctx.setLineDash([]);
+        ctx.fillStyle = this.accent + '22';
+        ctx.fillRect(0, 0, W, 36);
+        ctx.fillRect(0, H - 36, W, 36);
+        ctx.fillStyle = this.text;
+        ctx.font = "700 16px 'Caveat',Georgia,serif";
+        ctx.textAlign = 'center';
+        ctx.fillText('↑ upload gambar framemu ke GitHub ↑', W / 2, 24);
+        ctx.fillText('caca booth ✨', W / 2, H - 12);
+        return;
+      }
+
+      // Gambar frame PNG di atas seluruh canvas (full size)
+      const img = _frameCache[frameUrl];
+      if (img) {
+        ctx.drawImage(img, 0, 0, W, H);
+      }
+
+      // Footer nama
+      ctx.font = "700 20px 'Caveat',Georgia,serif";
+      ctx.fillStyle = this.text;
+      ctx.textAlign = 'center';
+      ctx.fillText('caca booth ✨', W / 2, H - 10);
+    },
+
+    // Pre-load gambar frame saat template dipilih
+    preload() {
+      if (this._frameUrl && !this._frameUrl.includes('USERNAME')) {
+        loadFrameImg(this._frameUrl);
+      }
+    },
+  };
+});
+
+// ── Pre-load semua frame di background saat halaman dibuka ───────
+window.addEventListener('load', () => {
+  Object.values(CUSTOM_FRAMES).forEach(t => t.preload());
+});
+
+const ALL_THEMES = { ...TEMPLATES, ...SOLID_THEMES, ...CUSTOM_FRAMES };
 
 // =====================================================================
 // ILLUSTRATED DRAWING FUNCTIONS
