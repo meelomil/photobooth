@@ -20,7 +20,7 @@ let remoteStream = null;
 
 let currentLayout = 'strip3';
 let currentFilter = 'none';
-let currentTheme  = 'pink';
+let currentTheme  = 'capybara';
 
 // captured photos: solo → array of dataUrls; together → [{you, peer}]
 let capturedPhotos = [];
@@ -42,15 +42,7 @@ const FILTER_CSS = {
   soft:    'brightness(1.08) contrast(.92) saturate(1.1) blur(.3px)',
 };
 
-const THEMES = {
-  pink:    { bg:'#ffd6e8', card:'#fff', text:'#a6416f', accent:'#ff6fa5', stickers:['♡','✦','☆'] },
-  lavender:{ bg:'#e3d6ff', card:'#fff', text:'#5c4590', accent:'#b28dff', stickers:['✧','☆','✦'] },
-  mint:    { bg:'#d2f5e3', card:'#fff', text:'#2c7a58', accent:'#4fd8a8', stickers:['✦','♡','✧'] },
-  butter:  { bg:'#fff2b8', card:'#fff', text:'#8a6d10', accent:'#ffcf3f', stickers:['☆','✧','♡'] },
-  peach:   { bg:'#ffe0cc', card:'#fff', text:'#a85a2f', accent:'#ff9d6c', stickers:['✦','☆','♡'] },
-  sky:     { bg:'#d6eeff', card:'#fff', text:'#2b5f8a', accent:'#5bb8f5', stickers:['✧','☆','✦'] },
-  clean:   { bg:'#ffffff', card:'#fff', text:'#4a3b52', accent:'#ff6fa5', stickers:['♡','✦','✧'] },
-};
+// THEMES di-load dari templates.js sebagai ALL_THEMES
 
 // ===== DOM refs =====
 const screens      = document.querySelectorAll('.screen');
@@ -322,9 +314,34 @@ document.getElementById('filterOptions').addEventListener('click', e => {
   videoYou.style.filter = FILTER_CSS[currentFilter];
 });
 
+// ── helper: clear semua pilihan tema ──
+function clearAllThemeSelections() {
+  document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#solidThemeOptions .swatch').forEach(s => s.classList.remove('active'));
+}
+
+// handler untuk template ilustrasi
 document.getElementById('themeOptions').addEventListener('click', e => {
+  const btn = e.target.closest('.tpl-btn'); if (!btn) return;
+  clearAllThemeSelections();
+  btn.classList.add('active');
+  currentTheme = btn.dataset.theme;
+});
+
+// handler untuk custom frame
+document.getElementById('customFrameOptions').addEventListener('click', e => {
+  const btn = e.target.closest('.tpl-btn'); if (!btn) return;
+  clearAllThemeSelections();
+  btn.classList.add('active');
+  currentTheme = btn.dataset.theme;
+  // pre-load gambar frame saat diklik
+  if (ALL_THEMES[currentTheme]?.preload) ALL_THEMES[currentTheme].preload();
+});
+
+// handler untuk warna solid
+document.getElementById('solidThemeOptions').addEventListener('click', e => {
   const sw = e.target.closest('.swatch'); if (!sw) return;
-  document.querySelectorAll('#themeOptions .swatch').forEach(s => s.classList.remove('active'));
+  clearAllThemeSelections();
   sw.classList.add('active');
   currentTheme = sw.dataset.theme;
 });
@@ -425,95 +442,84 @@ function checkAndComposeTogather() {
 
 // ===== Canvas: solo =====
 async function composeCanvas_solo(photos) {
-  const theme = THEMES[currentTheme];
+  const theme = ALL_THEMES[currentTheme];
   const cfg   = LAYOUTS[currentLayout];
-  const imgs  = await Promise.all(photos.map(loadImg));
 
-  const cellW=340, cellH=255, gap=18, outerPad=28;
+  // pre-load frame gambar kalau ada
+  if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
+    await loadFrameImg(theme._frameUrl);
+  }
+
+  const imgs = await Promise.all(photos.map(loadImg));
+
+  const cellW=340, cellH=255, gap=18, outerPad=36;
   const cols=cfg.cols, rows=Math.ceil(cfg.count/cols);
-  const footerH = currentLayout==='polaroid'?74:90;
+  const footerH = currentLayout==='polaroid' ? 74 : 70;
   const W = cols*cellW + (cols-1)*gap + outerPad*2;
   const H = rows*cellH + (rows-1)*gap + outerPad*2 + footerH;
 
   resultCanvas.width=W; resultCanvas.height=H;
   const ctx = resultCanvas.getContext('2d');
-  drawBase(ctx,W,H,theme);
 
+  // 1. background
+  theme.drawBg(ctx, W, H);
+
+  // 2. foto-foto
   imgs.forEach((img,i) => {
     const col=i%cols, row=Math.floor(i/cols);
     drawPhotoCard(ctx, img, outerPad+col*(cellW+gap), outerPad+row*(cellH+gap), cellW, cellH, theme);
-    drawSticker(ctx, theme.stickers[i%theme.stickers.length], outerPad+col*(cellW+gap)+cellW-4, outerPad+row*(cellH+gap)+6, 24, theme.accent);
   });
-  drawFooter(ctx,W,H,footerH,theme,'solo');
+
+  // 3. dekorasi/frame di ATAS foto
+  theme.drawDeco(ctx, W, H, []);
 }
 
 // ===== Canvas: together — each row = [you | peer] =====
 async function composeCanvas_together(youPhotos, theirPhotos) {
-  const theme = THEMES[currentTheme];
+  const theme = ALL_THEMES[currentTheme];
   const n     = LAYOUTS[currentLayout].count;
 
-  const cellW=280, cellH=210, gap=10, outerPad=24;
-  const footerH=90;
-  // layout: n rows, 2 cols (you | peer)
+  // pre-load frame gambar kalau ada
+  if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
+    await loadFrameImg(theme._frameUrl);
+  }
+
+  const cellW=280, cellH=210, gap=10, outerPad=36;
+  const footerH=70;
   const W = 2*cellW + gap + outerPad*2;
   const H = n*cellH + (n-1)*gap + outerPad*2 + footerH;
 
   resultCanvas.width=W; resultCanvas.height=H;
   const ctx = resultCanvas.getContext('2d');
-  drawBase(ctx,W,H,theme);
 
-  const youImgs  = await Promise.all(youPhotos.map(loadImg));
-  const theirImgs= await Promise.all(Object.values(theirPhotos).map(loadImg));
+  // 1. background
+  theme.drawBg(ctx, W, H);
 
+  const youImgs   = await Promise.all(youPhotos.map(loadImg));
+  const theirImgs = await Promise.all(Object.values(theirPhotos).map(loadImg));
+
+  // 2. foto-foto
   for (let i=0; i<n; i++) {
     const y = outerPad + i*(cellH+gap);
-    drawPhotoCard(ctx, youImgs[i],   outerPad,         y, cellW, cellH, theme);
-    drawPhotoCard(ctx, theirImgs[i], outerPad+cellW+gap, y, cellW, cellH, theme);
-    // sticker between the two
-    drawSticker(ctx, theme.stickers[i%theme.stickers.length], W/2, y+cellH/2, 22, theme.accent);
+    drawPhotoCard(ctx, youImgs[i],   outerPad,            y, cellW, cellH, theme);
+    drawPhotoCard(ctx, theirImgs[i], outerPad+cellW+gap,  y, cellW, cellH, theme);
   }
-  drawFooter(ctx,W,H,footerH,theme,'together');
+
+  // 3. dekorasi/frame di ATAS foto
+  theme.drawDeco(ctx, W, H, []);
 }
 
 // ===== Drawing helpers =====
-function drawBase(ctx,W,H,theme){
-  ctx.fillStyle=theme.bg; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle=theme.accent; ctx.lineWidth=3;
-  ctx.setLineDash([10,8]); ctx.strokeRect(10,10,W-20,H-20); ctx.setLineDash([]);
-}
-
-function drawPhotoCard(ctx,img,x,y,cw,ch,theme){
+function drawPhotoCard(ctx, img, x, y, cw, ch, theme){
   ctx.save();
   ctx.shadowColor='rgba(0,0,0,0.18)'; ctx.shadowBlur=14; ctx.shadowOffsetY=4;
-  ctx.fillStyle=theme.card; ctx.fillRect(x-8,y-8,cw+16,ch+16);
+  ctx.fillStyle=theme.card; ctx.fillRect(x-8, y-8, cw+16, ch+16);
   ctx.restore();
   const ir=img.width/img.height, cr=cw/ch;
   let sx,sy,sw,sh;
-  if(ir>cr){sh=img.height;sw=sh*cr;sx=(img.width-sw)/2;sy=0;}
-  else{sw=img.width;sh=sw/cr;sx=0;sy=(img.height-sh)/2;}
-  ctx.drawImage(img,sx,sy,sw,sh,x,y,cw,ch);
-}
-
-function drawSticker(ctx,glyph,cx,cy,size,color){
-  ctx.save();
-  ctx.font=`${size}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle=color;
-  ctx.translate(cx,cy); ctx.rotate((Math.random()*20-10)*Math.PI/180);
-  ctx.fillText(glyph,0,0); ctx.restore();
-}
-
-function drawFooter(ctx,W,H,footerH,theme,modeStr){
-  ctx.fillStyle=theme.text; ctx.textAlign='center';
-  if(currentLayout==='polaroid'){
-    const cap=captionField.value.trim()||'caca booth ✦ '+new Date().toLocaleDateString('id-ID');
-    ctx.font='italic 24px Georgia,serif'; ctx.fillText(cap,W/2,H-30);
-  } else {
-    ctx.font="700 26px 'Caveat',Georgia,serif";
-    const label = modeStr==='together' ? 'caca booth  ♡  foto bareng' : 'caca booth ✨';
-    ctx.fillText(label,W/2,H-footerH+30);
-    ctx.font="13px 'Poppins',sans-serif"; ctx.fillStyle=theme.accent;
-    ctx.fillText(new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}),W/2,H-footerH+56);
-  }
+  if(ir>cr){ sh=img.height; sw=sh*cr; sx=(img.width-sw)/2; sy=0; }
+  else     { sw=img.width;  sh=sw/cr; sx=0; sy=(img.height-sh)/2; }
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, cw, ch);
 }
 
 function loadImg(src){
