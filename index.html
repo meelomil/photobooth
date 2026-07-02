@@ -155,15 +155,37 @@
         </div>
 
         <div class="ctrl-section">
-          <label>Tema Bingkai</label>
-          <div class="swatch-row" id="themeOptions">
-            <button class="swatch active" style="background:#ffd6e8" data-theme="pink" title="Sweet Pink"></button>
-            <button class="swatch" style="background:#e3d6ff" data-theme="lavender" title="Lilac Dream"></button>
-            <button class="swatch" style="background:#d2f5e3" data-theme="mint" title="Mint"></button>
-            <button class="swatch" style="background:#fff2b8" data-theme="butter" title="Butter"></button>
-            <button class="swatch" style="background:#ffe0cc" data-theme="peach" title="Peach"></button>
-            <button class="swatch" style="background:#d6eeff" data-theme="sky" title="Sky Blue"></button>
-            <button class="swatch" style="background:#fff" data-theme="clean" title="Clean White"></button>
+          <label>Template & Tema</label>
+          <!-- Template Illustrated (4 tema gambar) -->
+          <p class="theme-sublabel">✨ Tema Ilustrasi</p>
+          <div class="template-grid" id="themeOptions">
+            <button class="tpl-btn active" data-theme="capybara">
+              <span class="tpl-icon">🐾</span>
+              <span>Capybara</span>
+            </button>
+            <button class="tpl-btn" data-theme="moana">
+              <span class="tpl-icon">🌊</span>
+              <span>Moana</span>
+            </button>
+            <button class="tpl-btn" data-theme="garden">
+              <span class="tpl-icon">🌻</span>
+              <span>Taman</span>
+            </button>
+            <button class="tpl-btn" data-theme="foodie">
+              <span class="tpl-icon">🍢</span>
+              <span>Foodies</span>
+            </button>
+          </div>
+          <!-- Warna Solid -->
+          <p class="theme-sublabel">🎨 Warna Solid</p>
+          <div class="swatch-row" id="solidThemeOptions">
+            <button class="swatch" style="background:#ffd6e8" data-theme="pink"     title="Pink"></button>
+            <button class="swatch" style="background:#e3d6ff" data-theme="lavender" title="Lavender"></button>
+            <button class="swatch" style="background:#d2f5e3" data-theme="mint"     title="Mint"></button>
+            <button class="swatch" style="background:#fff2b8" data-theme="butter"   title="Butter"></button>
+            <button class="swatch" style="background:#ffe0cc" data-theme="peach"    title="Peach"></button>
+            <button class="swatch" style="background:#d6eeff" data-theme="sky"      title="Sky"></button>
+            <button class="swatch" style="background:#fff"    data-theme="clean"    title="Clean"></button>
           </div>
         </div>
       </div>
@@ -189,6 +211,7 @@
   </div>
 
   <canvas id="workCanvas" style="display:none"></canvas>
+<script src="templates.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
