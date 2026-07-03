@@ -220,6 +220,10 @@ async function handleSignal(event) {
       }
       break;
 
+    case 'sync-settings':
+      applySettings(msg.settings);
+      break;
+
     case 'do-capture':
       stageNote.textContent = '🎀 temanmu menekan jepret!';
       await runCaptureSequence(msg.countdown, false);
@@ -369,6 +373,9 @@ function stopCamera() {
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
 }
 
+// sync caption polaroid saat diketik
+captionField.addEventListener('input', () => broadcastSettings());
+
 // Tunggu sampai video element benar-benar punya data (kamera aktif)
 function waitForVideoTrack(videoEl, timeout = 5000) {
   return new Promise(res => {
@@ -388,6 +395,7 @@ document.getElementById('layoutOptions').addEventListener('click', e => {
   currentLayout = btn.dataset.layout;
   captionField.style.display = currentLayout === 'polaroid' ? 'block' : 'none';
   buildProgressDots(); capturedPhotos = []; peerPhotos = {};
+  broadcastSettings();
 });
 
 document.getElementById('filterOptions').addEventListener('click', e => {
@@ -396,9 +404,60 @@ document.getElementById('filterOptions').addEventListener('click', e => {
   btn.classList.add('active');
   currentFilter = btn.dataset.filter;
   videoYou.style.filter = FILTER_CSS[currentFilter];
+  broadcastSettings();
 });
 
-// ── helper: clear semua pilihan tema ──
+// ===== Settings Sync (mode bareng) =====
+function broadcastSettings() {
+  if (mode !== 'together' || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type: 'sync-settings',
+    settings: {
+      layout:  currentLayout,
+      filter:  currentFilter,
+      theme:   currentTheme,
+      caption: captionField.value,
+    }
+  }));
+}
+
+function applySettings(settings) {
+  // layout
+  if (settings.layout && settings.layout !== currentLayout) {
+    currentLayout = settings.layout;
+    document.querySelectorAll('#layoutOptions .opt-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.layout === currentLayout);
+    });
+    captionField.style.display = currentLayout === 'polaroid' ? 'block' : 'none';
+    buildProgressDots();
+    capturedPhotos = []; peerPhotos = {};
+  }
+  // filter
+  if (settings.filter && settings.filter !== currentFilter) {
+    currentFilter = settings.filter;
+    document.querySelectorAll('#filterOptions .opt-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === currentFilter);
+    });
+    videoYou.style.filter = FILTER_CSS[currentFilter];
+  }
+  // theme
+  if (settings.theme && settings.theme !== currentTheme) {
+    currentTheme = settings.theme;
+    document.querySelectorAll('.tpl-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === currentTheme);
+    });
+    document.querySelectorAll('#solidThemeOptions .swatch').forEach(s => {
+      s.classList.toggle('active', s.dataset.theme === currentTheme);
+    });
+    document.querySelectorAll('#customFrameOptions .tpl-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === currentTheme);
+    });
+  }
+  // caption
+  if (settings.caption !== undefined) {
+    captionField.value = settings.caption;
+  }
+}
 function clearAllThemeSelections() {
   document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#solidThemeOptions .swatch').forEach(s => s.classList.remove('active'));
@@ -410,6 +469,7 @@ document.getElementById('themeOptions').addEventListener('click', e => {
   clearAllThemeSelections();
   btn.classList.add('active');
   currentTheme = btn.dataset.theme;
+  broadcastSettings();
 });
 
 // handler untuk custom frame
@@ -418,8 +478,8 @@ document.getElementById('customFrameOptions').addEventListener('click', e => {
   clearAllThemeSelections();
   btn.classList.add('active');
   currentTheme = btn.dataset.theme;
-  // pre-load gambar frame saat diklik
   if (ALL_THEMES[currentTheme]?.preload) ALL_THEMES[currentTheme].preload();
+  broadcastSettings();
 });
 
 // handler untuk warna solid
@@ -428,6 +488,7 @@ document.getElementById('solidThemeOptions').addEventListener('click', e => {
   clearAllThemeSelections();
   sw.classList.add('active');
   currentTheme = sw.dataset.theme;
+  broadcastSettings();
 });
 
 function buildProgressDots() {
