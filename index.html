@@ -88,49 +88,9 @@
 
     <div class="booth-wrap">
 
-      <!-- KAMERA -->
-      <div class="cameras" id="camerasArea">
+      <!-- KOLOM KIRI: Controls Panel -->
+      <aside class="booth-left">
 
-        <div class="cam-box" id="camYou">
-          <div class="cam-top-bar">
-            <span class="cam-label" id="camYouLabel">kamu</span>
-            <!-- tombol switch kamera on/off -->
-            <button class="cam-toggle" id="camToggleBtn" title="Nyala/Matikan Kamera">
-              <span id="camToggleIcon">📷</span> <span id="camToggleText">Matikan</span>
-            </button>
-          </div>
-          <div class="video-frame">
-            <video id="videoYou" autoplay muted playsinline></video>
-            <div class="cam-off-overlay" id="camOffOverlay" style="display:none">
-              <span>📷 kamera mati</span>
-            </div>
-            <div class="countdown" id="countdown"></div>
-            <div class="flash" id="flash"></div>
-          </div>
-          <!-- TOMBOL JEPRET langsung di bawah kamera -->
-          <button class="shutter-btn" id="shutterBtn">📸 Jepret!</button>
-        </div>
-
-        <div class="cam-box hidden" id="camPeer">
-          <div class="cam-top-bar">
-            <span class="cam-label">teman</span>
-          </div>
-          <div class="video-frame peer-frame">
-            <video id="videoPeer" autoplay playsinline></video>
-            <div class="connecting-overlay" id="connectingOverlay">
-              <span>Menghubungkan… ♡</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- PROGRESS + STATUS -->
-      <div class="progress-row" id="progressRow"></div>
-      <p class="stage-note" id="stageNote">pilih layout & tekan jepret!</p>
-
-      <!-- CONTROLS PANEL -->
-      <div class="controls-panel">
         <div class="ctrl-section">
           <label>Layout</label>
           <div class="option-grid" id="layoutOptions">
@@ -156,48 +116,38 @@
 
         <div class="ctrl-section">
           <label>Template & Tema</label>
-          <!-- Template Illustrated (4 tema gambar) -->
           <p class="theme-sublabel">✨ Tema Ilustrasi</p>
           <div class="template-grid" id="themeOptions">
             <button class="tpl-btn active" data-theme="capybara">
-              <span class="tpl-icon">🐾</span>
-              <span>Capybara</span>
+              <span class="tpl-icon">🐾</span><span>Capybara</span>
             </button>
             <button class="tpl-btn" data-theme="moana">
-              <span class="tpl-icon">🌊</span>
-              <span>Moana</span>
+              <span class="tpl-icon">🌊</span><span>Moana</span>
             </button>
             <button class="tpl-btn" data-theme="garden">
-              <span class="tpl-icon">🌻</span>
-              <span>Taman</span>
+              <span class="tpl-icon">🌻</span><span>Taman</span>
             </button>
             <button class="tpl-btn" data-theme="foodie">
-              <span class="tpl-icon">🍢</span>
-              <span>Foodies</span>
-            </button>
-          </div>
-          <!-- Custom Frame -->
-          <p class="theme-sublabel">🖼️ Frame Tema Sendiri</p>
-          <div class="template-grid" id="customFrameOptions">
-            <button class="tpl-btn" data-theme="custom1">
-              <span class="tpl-icon">🖼️</span>
-              <span>Tema 1</span>
-            </button>
-            <button class="tpl-btn" data-theme="custom2">
-              <span class="tpl-icon">🖼️</span>
-              <span>Tema 2</span>
-            </button>
-            <button class="tpl-btn" data-theme="custom3">
-              <span class="tpl-icon">🖼️</span>
-              <span>Tema 3</span>
-            </button>
-            <button class="tpl-btn" data-theme="custom4">
-              <span class="tpl-icon">🖼️</span>
-              <span>Tema 4</span>
+              <span class="tpl-icon">🍢</span><span>Foodies</span>
             </button>
           </div>
 
-          <!-- Warna Solid -->
+          <p class="theme-sublabel">🖼️ Frame Tema Sendiri</p>
+          <div class="template-grid" id="customFrameOptions">
+            <button class="tpl-btn" data-theme="custom1">
+              <span class="tpl-icon">🖼️</span><span>Tema 1</span>
+            </button>
+            <button class="tpl-btn" data-theme="custom2">
+              <span class="tpl-icon">🖼️</span><span>Tema 2</span>
+            </button>
+            <button class="tpl-btn" data-theme="custom3">
+              <span class="tpl-icon">🖼️</span><span>Tema 3</span>
+            </button>
+            <button class="tpl-btn" data-theme="custom4">
+              <span class="tpl-icon">🖼️</span><span>Tema 4</span>
+            </button>
+          </div>
+
           <p class="theme-sublabel">🎨 Warna Solid</p>
           <div class="swatch-row" id="solidThemeOptions">
             <button class="swatch" style="background:#ffd6e8" data-theme="pink"     title="Pink"></button>
@@ -209,6 +159,51 @@
             <button class="swatch" style="background:#fff"    data-theme="clean"    title="Clean"></button>
           </div>
         </div>
+
+      </aside>
+
+      <!-- KOLOM KANAN: Kamera + Tombol -->
+      <div class="booth-right">
+
+        <!-- KAMERA -->
+        <div class="cameras" id="camerasArea">
+
+          <div class="cam-box" id="camYou">
+            <div class="cam-top-bar">
+              <span class="cam-label" id="camYouLabel">kamu</span>
+              <button class="cam-toggle" id="camToggleBtn" title="Nyala/Matikan Kamera">
+                <span id="camToggleIcon">📷</span> <span id="camToggleText">Matikan</span>
+              </button>
+            </div>
+            <div class="video-frame">
+              <video id="videoYou" autoplay muted playsinline></video>
+              <div class="cam-off-overlay" id="camOffOverlay" style="display:none">
+                <span>📷 kamera mati</span>
+              </div>
+              <div class="countdown" id="countdown"></div>
+              <div class="flash" id="flash"></div>
+            </div>
+          </div>
+
+          <div class="cam-box hidden" id="camPeer">
+            <div class="cam-top-bar">
+              <span class="cam-label">teman</span>
+            </div>
+            <div class="video-frame peer-frame">
+              <video id="videoPeer" autoplay playsinline></video>
+              <div class="connecting-overlay" id="connectingOverlay">
+                <span>Menghubungkan… ♡</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- PROGRESS + STATUS + JEPRET -->
+        <div class="progress-row" id="progressRow"></div>
+        <p class="stage-note" id="stageNote">pilih layout & tekan jepret!</p>
+        <button class="shutter-btn" id="shutterBtn">📸 Jepret!</button>
+
       </div>
 
     </div>
