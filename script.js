@@ -33,6 +33,17 @@ const LAYOUTS = {
   polaroid:{ count:1, cols:1 },
 };
 
+// Layout khusus mode bareng:
+// count = jumlah foto PER ORANG
+// hasil akhir: tiap baris = [kamu | teman]
+// kecuali grid2x2: 2x2 total (kamu 2 foto + teman 2 foto)
+const LAYOUTS_TOGETHER = {
+  strip3:  { count:3, mode:'rows' },   // 3 baris, tiap baris kamu|teman
+  strip4:  { count:4, mode:'rows' },   // 4 baris, tiap baris kamu|teman
+  polaroid:{ count:1, mode:'rows' },   // 1 baris, kamu|teman
+  grid2x2: { count:2, mode:'grid' },   // grid 2x2: baris 1=kamu1|kamu2, baris 2=teman1|teman2
+};
+
 const FILTER_CSS = {
   none:    'none',
   bw:      'grayscale(1) contrast(1.05)',
@@ -225,8 +236,9 @@ async function handleSignal(event) {
       break;
 
     case 'do-capture':
+      // peer yang menekan jepret — kita ikut capture bersamaan
       stageNote.textContent = '🎀 temanmu menekan jepret!';
-      await runCaptureSequence(msg.countdown, false);
+      await runCaptureSequence(msg.countdown ?? 3);
       break;
 
     case 'peer-photo':
@@ -492,7 +504,9 @@ document.getElementById('solidThemeOptions').addEventListener('click', e => {
 });
 
 function buildProgressDots() {
-  const n = LAYOUTS[currentLayout].count;
+  const n = mode === 'together'
+    ? LAYOUTS_TOGETHER[currentLayout].count
+    : LAYOUTS[currentLayout].count;
   progressRow.innerHTML = '';
   for (let i = 0; i < n; i++) {
     const d = document.createElement('div');
@@ -503,52 +517,71 @@ function buildProgressDots() {
 
 // ===== Shutter =====
 shutterBtn.addEventListener('click', async () => {
-  if (mode === 'together' && ws?.readyState === WebSocket.OPEN) {
-    // tell the peer to also capture
-    ws.send(JSON.stringify({ type:'trigger-capture', countdown:3 }));
+  if (mode === 'together') {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      stageNote.textContent = '⚠️ Belum tersambung ke teman!';
+      return;
+    }
+    // Kirim trigger ke peer DULU, lalu dua-duanya mulai bareng
+    ws.send(JSON.stringify({ type: 'trigger-capture', countdown: 3 }));
   }
-  await runCaptureSequence(3, true);
+  await runCaptureSequence(3);
 });
 
 // ===== Capture sequence =====
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function runCaptureSequence(cdSecs, isInitiator) {
+async function runCaptureSequence(cdSecs = 3) {
+  // nonaktifkan tombol jepret di kedua user selama proses
   shutterBtn.disabled = true;
-  const n    = LAYOUTS[currentLayout].count;
+  capturedPhotos = [];
+  peerPhotos     = {};
+
+  const n = mode === 'together'
+    ? LAYOUTS_TOGETHER[currentLayout].count
+    : LAYOUTS[currentLayout].count;
+
+  // rebuild dots segar setiap sesi
+  buildProgressDots();
   const dots = progressRow.querySelectorAll('.progress-dot');
 
   for (let i = 0; i < n; i++) {
+    // update progress dot
     dots.forEach(d => d.classList.remove('current'));
-    dots[i].classList.add('current');
-    stageNote.textContent = `foto ${i+1}/${n} — bersiap!`;
+    if (dots[i]) dots[i].classList.add('current');
+    stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
+
     await countdownAnim(cdSecs);
+
     const dataUrl = captureFrame(videoYou, FILTER_CSS[currentFilter]);
 
     if (mode === 'solo') {
       capturedPhotos.push(dataUrl);
     } else {
       capturedPhotos[i] = dataUrl;
-      // send our photo to peer
+      // kirim foto kita ke peer
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type:'photo', dataUrl, index:i }));
+        ws.send(JSON.stringify({ type: 'photo', dataUrl, index: i }));
       }
     }
 
+    // efek flash
     flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go');
-    dots[i].classList.remove('current');
-    dots[i].classList.add('done');
-    stageNote.textContent = `foto ${i+1} diambil! ✨`;
-    await sleep(600);
+
+    // update dot jadi done
+    if (dots[i]) { dots[i].classList.remove('current'); dots[i].classList.add('done'); }
+    stageNote.textContent = `✅ foto ${i+1} diambil!`;
+    await sleep(500);
   }
 
   shutterBtn.disabled = false;
 
   if (mode === 'solo') {
+    stageNote.textContent = '✨ menyusun foto…';
     await composeCanvas_solo(capturedPhotos);
     showScreen('screenResult');
   } else {
-    stageNote.textContent = 'Menunggu foto dari teman… ♡';
+    stageNote.textContent = '⏳ menunggu foto dari teman… ♡';
     checkAndComposeTogather();
   }
 }
@@ -576,12 +609,13 @@ function captureFrame(videoEl, filterStr) {
   return workCanvas.toDataURL('image/jpeg', 0.95);
 }
 
-// ===== Together: wait for both photos at each index =====
+// ===== Together: tunggu foto dari kedua user =====
 function checkAndComposeTogather() {
-  const n = LAYOUTS[currentLayout].count;
+  const n = LAYOUTS_TOGETHER[currentLayout].count;
   for (let i = 0; i < n; i++) {
-    if (!capturedPhotos[i] || !peerPhotos[i]) return; // not all ready yet
+    if (!capturedPhotos[i] || !peerPhotos[i]) return; // belum semua ready
   }
+  stageNote.textContent = '✨ menyusun foto bareng…';
   composeCanvas_together(capturedPhotos, peerPhotos).then(() => showScreen('screenResult'));
 }
 
@@ -619,39 +653,78 @@ async function composeCanvas_solo(photos) {
   theme.drawDeco(ctx, W, H, []);
 }
 
-// ===== Canvas: together — each row = [you | peer] =====
+// ===== Canvas: together =====
 async function composeCanvas_together(youPhotos, theirPhotos) {
-  const theme = ALL_THEMES[currentTheme];
-  const n     = LAYOUTS[currentLayout].count;
+  const theme  = ALL_THEMES[currentTheme];
+  const cfg    = LAYOUTS_TOGETHER[currentLayout];
+  const n      = cfg.count;
 
   // pre-load frame gambar kalau ada
   if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
     await loadFrameImg(theme._frameUrl);
   }
 
-  const cellW=280, cellH=210, gap=10, outerPad=36;
-  const footerH=70;
-  const W = 2*cellW + gap + outerPad*2;
-  const H = n*cellH + (n-1)*gap + outerPad*2 + footerH;
+  const youImgs   = await Promise.all(Array.from({length:n}, (_,i) => loadImg(youPhotos[i])));
+  const theirImgs = await Promise.all(Array.from({length:n}, (_,i) => loadImg(peerPhotos[i])));
 
-  resultCanvas.width=W; resultCanvas.height=H;
-  const ctx = resultCanvas.getContext('2d');
+  const outerPad = 32, gap = 14, footerH = 72;
 
-  // 1. background
-  theme.drawBg(ctx, W, H);
+  if (cfg.mode === 'grid') {
+    // ── GRID 2x2: baris 1 = kamu1 | kamu2, baris 2 = teman1 | teman2 ──
+    const cellW = 290, cellH = 218;
+    const W = 2*cellW + gap + outerPad*2;
+    const H = 2*cellH + gap + outerPad*2 + footerH;
 
-  const youImgs   = await Promise.all(youPhotos.map(loadImg));
-  const theirImgs = await Promise.all(Object.values(theirPhotos).map(loadImg));
+    resultCanvas.width = W; resultCanvas.height = H;
+    const ctx = resultCanvas.getContext('2d');
+    theme.drawBg(ctx, W, H);
 
-  // 2. foto-foto
-  for (let i=0; i<n; i++) {
-    const y = outerPad + i*(cellH+gap);
-    drawPhotoCard(ctx, youImgs[i],   outerPad,            y, cellW, cellH, theme);
-    drawPhotoCard(ctx, theirImgs[i], outerPad+cellW+gap,  y, cellW, cellH, theme);
+    // baris 1: 2 foto kamu
+    drawPhotoCard(ctx, youImgs[0], outerPad,            outerPad,            cellW, cellH, theme);
+    drawPhotoCard(ctx, youImgs[1], outerPad+cellW+gap,  outerPad,            cellW, cellH, theme);
+    // baris 2: 2 foto teman
+    drawPhotoCard(ctx, theirImgs[0], outerPad,           outerPad+cellH+gap, cellW, cellH, theme);
+    drawPhotoCard(ctx, theirImgs[1], outerPad+cellW+gap, outerPad+cellH+gap, cellW, cellH, theme);
+
+    // label kamu / teman
+    drawRowLabel(ctx, 'kamu',  theme.accent, outerPad,           outerPad - 20, cellW*2+gap);
+    drawRowLabel(ctx, 'teman', theme.accent, outerPad, outerPad+cellH+gap - 20, cellW*2+gap);
+
+    theme.drawDeco(ctx, W, H, []);
+
+  } else {
+    // ── ROWS: tiap baris = kamu | teman ──
+    const cellW = 268, cellH = 201;
+    const W = 2*cellW + gap + outerPad*2;
+    const H = n*cellH + (n-1)*gap + outerPad*2 + footerH;
+
+    resultCanvas.width = W; resultCanvas.height = H;
+    const ctx = resultCanvas.getContext('2d');
+    theme.drawBg(ctx, W, H);
+
+    // label kolom di atas baris pertama
+    drawRowLabel(ctx, 'kamu',  theme.accent, outerPad,            outerPad - 22, cellW);
+    drawRowLabel(ctx, 'teman', theme.accent, outerPad+cellW+gap,  outerPad - 22, cellW);
+
+    for (let i = 0; i < n; i++) {
+      const y = outerPad + i*(cellH+gap);
+      drawPhotoCard(ctx, youImgs[i],   outerPad,           y, cellW, cellH, theme);
+      drawPhotoCard(ctx, theirImgs[i], outerPad+cellW+gap, y, cellW, cellH, theme);
+    }
+
+    theme.drawDeco(ctx, W, H, []);
   }
+}
 
-  // 3. dekorasi/frame di ATAS foto
-  theme.drawDeco(ctx, W, H, []);
+// helper label kecil di atas baris foto
+function drawRowLabel(ctx, text, color, x, y, w) {
+  ctx.save();
+  ctx.font = "700 15px 'Caveat',Georgia,serif";
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + w/2, y);
+  ctx.restore();
 }
 
 // ===== Drawing helpers =====
