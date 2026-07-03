@@ -266,7 +266,6 @@ let iceCandidateQueue = [];
 async function startWebRTC_asInitiator() {
   iceCandidateQueue = [];
   createPeerConnection();
-  // tambah track SEBELUM buat offer
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: true });
   await pc.setLocalDescription(offer);
@@ -276,8 +275,32 @@ async function startWebRTC_asInitiator() {
 async function startWebRTC_asReceiver() {
   iceCandidateQueue = [];
   createPeerConnection();
-  // tambah track sekarang — offer belum datang tapi track harus sudah siap
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+}
+
+// Batasi bitrate video sender agar tidak patah-patah
+// dipanggil setelah koneksi terbentuk (onconnectionstatechange = connected)
+async function applyVideoBandwidth(pc, maxKbps = 500) {
+  if (!pc) return;
+  const senders = pc.getSenders().filter(s => s.track?.kind === 'video');
+  for (const sender of senders) {
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings.forEach(enc => {
+        enc.maxBitrate    = maxKbps * 1000;
+        enc.maxFramerate  = 24;
+        // prioritaskan kelancaran (framerate) daripada kualitas gambar
+        enc.networkPriority = 'high';
+        enc.priority        = 'high';
+      });
+      await sender.setParameters(params);
+    } catch(e) {
+      console.warn('setParameters gagal:', e);
+    }
+  }
 }
 
 function createPeerConnection() {
@@ -285,32 +308,29 @@ function createPeerConnection() {
 
   pc = new RTCPeerConnection({
     iceServers: [
-      // Google STUN
-      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun.l.google.com:19302'  },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      // Cloudflare STUN (lebih cepat di Asia)
       { urls: 'stun:stun.cloudflare.com:3478' },
-      // Open Relay TURN — fallback jika peer-to-peer gagal (misal beda jaringan/operator)
       {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
+        urls:       'turn:openrelay.metered.ca:80',
+        username:   'openrelayproject',
         credential: 'openrelayproject',
       },
       {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
+        urls:       'turn:openrelay.metered.ca:443',
+        username:   'openrelayproject',
         credential: 'openrelayproject',
       },
       {
-        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-        username: 'openrelayproject',
+        urls:       'turn:openrelay.metered.ca:443?transport=tcp',
+        username:   'openrelayproject',
         credential: 'openrelayproject',
       },
     ],
     iceCandidatePoolSize: 10,
+    // preferensikan VP8 — codec paling stabil & ringan di semua browser
+    sdpSemantics: 'unified-plan',
   });
 
   pc.onicecandidate = e => {
@@ -319,16 +339,26 @@ function createPeerConnection() {
     }
   };
 
-  pc.onconnectionstatechange = () => {
+  pc.onconnectionstatechange = async () => {
     console.log('WebRTC state:', pc.connectionState);
     if (pc.connectionState === 'connected') {
       connectingOverlay.style.display = 'none';
       stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+      // terapkan batas bandwidth setelah tersambung
+      await applyVideoBandwidth(pc, 500); // maks 500 kbps
+    }
+    if (pc.connectionState === 'disconnected') {
+      // coba reconnect otomatis setelah 2 detik
+      setTimeout(() => {
+        if (pc?.connectionState === 'disconnected') {
+          stageNote.textContent = '⚠️ koneksi tidak stabil, mencoba ulang…';
+        }
+      }, 2000);
     }
     if (pc.connectionState === 'failed') {
       stageNote.textContent = '⚠️ koneksi gagal, coba refresh & ulangi';
       connectingOverlay.style.display = 'flex';
-      connectingOverlay.querySelector('span').textContent = 'Koneksi gagal, coba lagi :(';
+      connectingOverlay.querySelector('span').textContent = 'Koneksi gagal :(';
     }
   };
 
@@ -342,12 +372,15 @@ function createPeerConnection() {
 
 function cleanupConnection() {
   iceCandidateQueue = [];
-  if (pc)  { try { pc.close(); } catch(e){} pc = null; }
-  if (ws)  { try { ws.close(); } catch(e){} ws = null; }
+  if (pc) { try { pc.close(); } catch(e){} pc = null; }
+  if (ws) { try { ws.close(); } catch(e){} ws = null; }
   remoteStream = null;
   videoPeer.srcObject = null;
-  connectingOverlay.style.display = 'flex';
-  connectingOverlay.querySelector('span').textContent = 'Menghubungkan… ♡';
+
+  // reset UI overlay dan status — penting saat user pindah ke solo setelah bareng
+  connectingOverlay.style.display = 'none';
+  stageNote.textContent = 'pilih layout & tekan jepret!';
+
   roomCode = ''; userNum = 0;
   roomCodeDisplay.style.display = 'none';
   btnCreateRoom.disabled = false;
@@ -362,6 +395,7 @@ async function startBooth() {
   buildProgressDots();
   capturedPhotos = [];
   peerPhotos = {};
+
   // reset toggle kamera ke ON
   camEnabled = true;
   const _ov  = document.getElementById('camOffOverlay');
@@ -372,8 +406,37 @@ async function startBooth() {
   if (_ic)  _ic.textContent   = '📷';
   if (_tx)  _tx.textContent   = 'Matikan';
   if (_btn) _btn.classList.remove('off');
+
+  // FIX 2: reset stageNote dan sembunyikan connectingOverlay saat mode solo
+  if (mode === 'solo') {
+    stageNote.textContent = 'pilih layout & tekan jepret!';
+    connectingOverlay.style.display = 'none';
+  }
+
+  // FIX 1: resolusi berbeda untuk solo vs bareng
+  // Solo: tinggi (untuk hasil foto bagus)
+  // Bareng: sedang (agar stream WebRTC tidak patah-patah)
+  const videoConstraints = mode === 'together'
+    ? {
+        width:  { ideal: 640,  max: 854  },
+        height: { ideal: 480,  max: 640  },
+        frameRate: { ideal: 24, max: 30  },
+      }
+    : {
+        width:  { ideal: 1280 },
+        height: { ideal: 960  },
+      };
+
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:960 }, audio:false });
+    // stop stream lama kalau ada
+    if (localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+      localStream = null;
+    }
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: videoConstraints,
+      audio: false,
+    });
     videoYou.srcObject = localStream;
   } catch(err) {
     stageNote.textContent = 'Kamera gagal dimuat. Izinkan akses kamera ya!';
