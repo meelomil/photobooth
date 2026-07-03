@@ -117,6 +117,7 @@ btnSolo.addEventListener('click', () => {
   modeBadge.textContent = '📷 solo';
   camPeer.classList.add('hidden');
   camYouLabel.textContent = 'kamu';
+  setCommFabVisible(false);
   startBooth();
   showScreen('screenBooth');
 });
@@ -134,6 +135,8 @@ document.getElementById('btnBackHome').addEventListener('click', () => {
 document.getElementById('btnBackBooth').addEventListener('click', () => {
   cleanupConnection();
   stopCamera();
+  stopCall();
+  setCommFabVisible(false);
   showScreen('screenHome');
 });
 
@@ -189,10 +192,10 @@ async function handleSignal(event) {
       modeBadge.textContent = '👯 bareng';
       camPeer.classList.remove('hidden');
       camYouLabel.textContent = 'kamu';
-      // tunggu kamera siap dulu baru WebRTC
+      resetChat();
       await startBooth();
       showScreen('screenBooth');
-      // tunggu video track benar-benar aktif
+      setCommFabVisible(true);   // tampilkan tombol chat+call
       await waitForVideoTrack(videoYou);
       if (userNum === 1) await startWebRTC_asInitiator();
       else               await startWebRTC_asReceiver();
@@ -246,10 +249,16 @@ async function handleSignal(event) {
       checkAndComposeTogather();
       break;
 
+    case 'chat-message':
+      addChatBubble(msg.text, 'peer', msg.time);
+      break;
+
     case 'peer-left':
       stageNote.textContent = 'Teman kamu keluar dari room :(';
       connectingOverlay.style.display = 'flex';
       connectingOverlay.querySelector('span').textContent = 'Teman keluar :(';
+      setCommFabVisible(false);
+      stopCall();
       break;
 
     case 'error':
@@ -823,5 +832,160 @@ document.getElementById('retakeBtn').addEventListener('click',()=>{
 
 document.getElementById('homeBtn').addEventListener('click',()=>{
   cleanupConnection(); stopCamera();
+  stopCall();
   showScreen('screenHome');
 });
+
+// =====================================================================
+// CALL + CHAT
+// =====================================================================
+
+// ── DOM refs ──
+const commFab      = document.getElementById('commFab');
+const fabToggle    = document.getElementById('fabToggle');
+const fabIcon      = document.getElementById('fabIcon');
+const chatBadge    = document.getElementById('chatBadge');
+const commPanel    = document.getElementById('commPanel');
+const commClose    = document.getElementById('commClose');
+const callBtn      = document.getElementById('callBtn');
+const callBtnIcon  = document.getElementById('callBtnIcon');
+const callBtnText  = document.getElementById('callBtnText');
+const muteBtn      = document.getElementById('muteBtn');
+const muteBtnIcon  = document.getElementById('muteBtnIcon');
+const muteBtnText  = document.getElementById('muteBtnText');
+const callStatus   = document.getElementById('callStatus');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput    = document.getElementById('chatInput');
+const chatSend     = document.getElementById('chatSend');
+
+let audioStream  = null;   // mic stream
+let callActive   = false;
+let isMuted      = false;
+let panelOpen    = false;
+
+// ── FAB toggle panel ──
+fabToggle.addEventListener('click', () => {
+  panelOpen = !panelOpen;
+  commPanel.style.display = panelOpen ? 'flex' : 'none';
+  fabIcon.textContent     = panelOpen ? '✕' : '💬';
+  if (panelOpen) {
+    chatBadge.style.display = 'none'; // hapus notif saat dibuka
+    chatInput.focus();
+  }
+});
+
+commClose.addEventListener('click', () => {
+  panelOpen = false;
+  commPanel.style.display = 'none';
+  fabIcon.textContent = '💬';
+});
+
+// ── Tampilkan / sembunyikan FAB sesuai mode ──
+function setCommFabVisible(visible) {
+  commFab.style.display   = visible ? 'block' : 'none';
+  commPanel.style.display = 'none';
+  panelOpen = false;
+  fabIcon.textContent = '💬';
+}
+
+// ── CALL ──
+callBtn.addEventListener('click', async () => {
+  if (!callActive) await startCall();
+  else             stopCall();
+});
+
+async function startCall() {
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    // tambahkan audio track ke RTCPeerConnection yang sudah ada
+    if (pc) {
+      audioStream.getAudioTracks().forEach(t => pc.addTrack(t, audioStream));
+    }
+    callActive = true;
+    isMuted    = false;
+    callBtn.classList.add('active');
+    callBtnIcon.textContent = '📵';
+    callBtnText.textContent = 'Akhiri Call';
+    muteBtn.classList.remove('hidden');
+    callStatus.textContent  = '🟢 call aktif';
+  } catch(err) {
+    callStatus.textContent = '⚠️ Izinkan akses mikrofon dulu!';
+    console.error(err);
+  }
+}
+
+function stopCall() {
+  if (audioStream) {
+    audioStream.getTracks().forEach(t => t.stop());
+    audioStream = null;
+  }
+  callActive = false;
+  isMuted    = false;
+  callBtn.classList.remove('active');
+  callBtnIcon.textContent = '🎙️';
+  callBtnText.textContent = 'Mulai Call';
+  muteBtn.classList.add('hidden');
+  muteBtn.classList.remove('muted');
+  muteBtnIcon.textContent = '🔇';
+  muteBtnText.textContent = 'Mute';
+  callStatus.textContent  = '';
+}
+
+muteBtn.addEventListener('click', () => {
+  if (!audioStream) return;
+  isMuted = !isMuted;
+  audioStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+  muteBtn.classList.toggle('muted', isMuted);
+  muteBtnIcon.textContent = isMuted ? '🎙️' : '🔇';
+  muteBtnText.textContent = isMuted ? 'Unmute' : 'Mute';
+  callStatus.textContent  = isMuted ? '🔕 kamu di-mute' : '🟢 call aktif';
+});
+
+// ── CHAT ──
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    addChatBubble('⚠️ Belum tersambung ke teman', 'me',
+      new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}));
+    return;
+  }
+  const time = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  ws.send(JSON.stringify({ type: 'chat-message', text }));
+  addChatBubble(text, 'me', time);
+  chatInput.value = '';
+}
+
+chatSend.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+});
+
+function addChatBubble(text, who, time) {
+  // hapus placeholder
+  const empty = chatMessages.querySelector('.chat-empty');
+  if (empty) empty.remove();
+
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${who}`;
+  bubble.innerHTML = `${escHtml(text)}<span class="chat-time">${time}</span>`;
+  chatMessages.appendChild(bubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // tampilkan badge kalau panel tutup dan pesan dari peer
+  if (!panelOpen && who === 'peer') {
+    chatBadge.style.display = 'flex';
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Reset chat saat room baru ──
+function resetChat() {
+  chatMessages.innerHTML = '<div class="chat-empty">belum ada pesan… mulai ngobrol! ♡</div>';
+  chatBadge.style.display = 'none';
+  chatInput.value = '';
+  stopCall();
+}
