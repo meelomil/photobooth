@@ -239,8 +239,9 @@ async function handleSignal(event) {
       break;
 
     case 'do-capture':
-      // peer yang menekan jepret — kita ikut capture bersamaan
       stageNote.textContent = '🎀 temanmu menekan jepret!';
+      // tunggu sampai waktu yang sama dengan user yang menekan shutter
+      if (msg.startAt) await waitUntil(msg.startAt);
       await runCaptureSequence(msg.countdown ?? 3);
       break;
 
@@ -594,14 +595,22 @@ shutterBtn.addEventListener('click', async () => {
       stageNote.textContent = '⚠️ Belum tersambung ke teman!';
       return;
     }
-    // Kirim trigger ke peer DULU, lalu dua-duanya mulai bareng
-    ws.send(JSON.stringify({ type: 'trigger-capture', countdown: 3 }));
+    // kirim timestamp agar countdown mulai di waktu yang sama
+    const startAt = Date.now() + 300; // beri jeda 300ms untuk WebSocket sampai
+    ws.send(JSON.stringify({ type: 'trigger-capture', countdown: 3, startAt }));
+    await waitUntil(startAt);
   }
   await runCaptureSequence(3);
 });
 
 // ===== Capture sequence =====
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// tunggu sampai timestamp tertentu (untuk sinkronisasi countdown)
+function waitUntil(timestamp) {
+  const delay = timestamp - Date.now();
+  return delay > 0 ? sleep(delay) : Promise.resolve();
+}
 
 async function runCaptureSequence(cdSecs = 3) {
   // nonaktifkan tombol jepret di kedua user selama proses
@@ -659,14 +668,26 @@ async function runCaptureSequence(cdSecs = 3) {
 }
 
 async function countdownAnim(seconds) {
-  countdownEl.style.display = 'flex';
-  for (let s = seconds; s >= 1; s--) {
-    countdownEl.textContent = s;
-    await sleep(700);
-  }
-  countdownEl.textContent = '📸';
-  await sleep(250);
-  countdownEl.style.display = 'none';
+  return new Promise(resolve => {
+    countdownEl.style.display = 'flex';
+    let current = seconds;
+    countdownEl.textContent = current;
+
+    const interval = setInterval(() => {
+      current--;
+      if (current >= 1) {
+        countdownEl.textContent = current;
+      } else {
+        // selesai countdown
+        clearInterval(interval);
+        countdownEl.textContent = '📸';
+        setTimeout(() => {
+          countdownEl.style.display = 'none';
+          resolve();
+        }, 300);
+      }
+    }, 1000); // tepat 1 detik per angka, tidak ada yang terlewat
+  });
 }
 
 function captureFrame(videoEl, filterStr) {
