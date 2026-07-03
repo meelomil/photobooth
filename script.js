@@ -178,25 +178,46 @@ async function handleSignal(event) {
       modeBadge.textContent = '👯 bareng';
       camPeer.classList.remove('hidden');
       camYouLabel.textContent = 'kamu';
+      // tunggu kamera siap dulu baru WebRTC
       await startBooth();
       showScreen('screenBooth');
+      // tunggu video track benar-benar aktif
+      await waitForVideoTrack(videoYou);
       if (userNum === 1) await startWebRTC_asInitiator();
       else               await startWebRTC_asReceiver();
       break;
 
     case 'offer':
-      await pc.setRemoteDescription(new RTCSessionDescription(msg));
+      // receiver: set remote dulu, baru add track, lalu answer
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+      // flush ICE queue yang mungkin sudah datang sebelumnya
+      for (const c of iceCandidateQueue) {
+        try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e){}
+      }
+      iceCandidateQueue = [];
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      ws.send(JSON.stringify({ type:'answer', sdp:answer.sdp }));
+      ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
       break;
 
     case 'answer':
-      await pc.setRemoteDescription(new RTCSessionDescription(msg));
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+      // flush ICE queue
+      for (const c of iceCandidateQueue) {
+        try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e){}
+      }
+      iceCandidateQueue = [];
       break;
 
     case 'ice-candidate':
-      if (msg.candidate) await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+      if (!msg.candidate) break;
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        // remoteDescription sudah di-set, langsung tambah
+        try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch(e){}
+      } else {
+        // belum siap, simpan dulu di queue
+        iceCandidateQueue.push(msg.candidate);
+      }
       break;
 
     case 'do-capture':
@@ -222,39 +243,91 @@ async function handleSignal(event) {
 }
 
 // ===== WebRTC =====
+
+// Queue ICE candidates yang datang sebelum remoteDescription di-set
+let iceCandidateQueue = [];
+
 async function startWebRTC_asInitiator() {
+  iceCandidateQueue = [];
   createPeerConnection();
+  // tambah track SEBELUM buat offer
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  const offer = await pc.createOffer();
+  const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: true });
   await pc.setLocalDescription(offer);
-  ws.send(JSON.stringify({ type:'offer', sdp: offer.sdp }));
+  ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
 }
 
 async function startWebRTC_asReceiver() {
+  iceCandidateQueue = [];
   createPeerConnection();
+  // tambah track sekarang — offer belum datang tapi track harus sudah siap
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 }
 
 function createPeerConnection() {
+  if (pc) { try { pc.close(); } catch(e){} pc = null; }
+
   pc = new RTCPeerConnection({
-    iceServers:[
-      { urls:'stun:stun.l.google.com:19302' },
-      { urls:'stun:stun1.l.google.com:19302' },
-    ]
+    iceServers: [
+      // Google STUN
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      // Cloudflare STUN (lebih cepat di Asia)
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      // Open Relay TURN — fallback jika peer-to-peer gagal (misal beda jaringan/operator)
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+    iceCandidatePoolSize: 10,
   });
+
   pc.onicecandidate = e => {
-    if (e.candidate) ws.send(JSON.stringify({ type:'ice-candidate', candidate:e.candidate }));
+    if (e.candidate && ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ice-candidate', candidate: e.candidate }));
+    }
   };
+
+  pc.onconnectionstatechange = () => {
+    console.log('WebRTC state:', pc.connectionState);
+    if (pc.connectionState === 'connected') {
+      connectingOverlay.style.display = 'none';
+      stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+    }
+    if (pc.connectionState === 'failed') {
+      stageNote.textContent = '⚠️ koneksi gagal, coba refresh & ulangi';
+      connectingOverlay.style.display = 'flex';
+      connectingOverlay.querySelector('span').textContent = 'Koneksi gagal, coba lagi :(';
+    }
+  };
+
   pc.ontrack = e => {
     remoteStream = e.streams[0];
     videoPeer.srcObject = remoteStream;
     connectingOverlay.style.display = 'none';
+    stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
   };
 }
 
 function cleanupConnection() {
-  if (pc)  { pc.close();  pc = null; }
-  if (ws)  { ws.close();  ws = null; }
+  iceCandidateQueue = [];
+  if (pc)  { try { pc.close(); } catch(e){} pc = null; }
+  if (ws)  { try { ws.close(); } catch(e){} ws = null; }
   remoteStream = null;
   videoPeer.srcObject = null;
   connectingOverlay.style.display = 'flex';
@@ -294,6 +367,17 @@ async function startBooth() {
 
 function stopCamera() {
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+}
+
+// Tunggu sampai video element benar-benar punya data (kamera aktif)
+function waitForVideoTrack(videoEl, timeout = 5000) {
+  return new Promise(res => {
+    if (videoEl.readyState >= 2) { res(); return; }
+    const done = () => { clearTimeout(timer); res(); };
+    const timer = setTimeout(done, timeout); // fallback timeout
+    videoEl.addEventListener('loadeddata', done, { once: true });
+    videoEl.addEventListener('playing',    done, { once: true });
+  });
 }
 
 // ===== Controls =====
