@@ -255,11 +255,10 @@ async function handleSignal(event) {
       break;
 
     case 'peer-left':
-      stageNote.textContent = 'Teman kamu keluar dari room :(';
+      stageNote.textContent = '⚠️ Teman disconnect. Menunggu kembali…';
       connectingOverlay.style.display = 'flex';
-      connectingOverlay.querySelector('span').textContent = 'Teman keluar :(';
-      setCommFabVisible(false);
-      stopCall();
+      connectingOverlay.querySelector('span').textContent = 'Teman terputus, menunggu… ♡';
+      // jangan hapus FAB atau putus koneksi — beri kesempatan rejoin
       break;
 
     case 'error':
@@ -349,6 +348,19 @@ function createPeerConnection() {
     }
   };
 
+  // auto renegotiate saat ada track baru (misal saat call dimulai)
+  pc.onnegotiationneeded = async () => {
+    // hanya initiator (userNum 1) yang buat offer baru
+    if (userNum !== 1) return;
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+      }
+    } catch(e) { console.warn('renegotiation error:', e); }
+  };
+
   pc.onconnectionstatechange = async () => {
     console.log('WebRTC state:', pc.connectionState);
     if (pc.connectionState === 'connected') {
@@ -373,10 +385,28 @@ function createPeerConnection() {
   };
 
   pc.ontrack = e => {
-    remoteStream = e.streams[0];
-    videoPeer.srcObject = remoteStream;
-    connectingOverlay.style.display = 'none';
-    stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+    if (e.track.kind === 'video') {
+      remoteStream = e.streams[0];
+      videoPeer.srcObject = remoteStream;
+      connectingOverlay.style.display = 'none';
+      stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+    } else if (e.track.kind === 'audio') {
+      // buat elemen audio tersembunyi untuk putar suara peer
+      let peerAudio = document.getElementById('peerAudio');
+      if (!peerAudio) {
+        peerAudio = document.createElement('audio');
+        peerAudio.id       = 'peerAudio';
+        peerAudio.autoplay = true;
+        peerAudio.style.display = 'none';
+        document.body.appendChild(peerAudio);
+      }
+      if (!peerAudio.srcObject) {
+        peerAudio.srcObject = new MediaStream([e.track]);
+      } else {
+        peerAudio.srcObject.addTrack(e.track);
+      }
+      callStatus.textContent = '🟢 call aktif';
+    }
   };
 }
 
@@ -387,7 +417,11 @@ function cleanupConnection() {
   remoteStream = null;
   videoPeer.srcObject = null;
 
-  // reset UI overlay dan status — penting saat user pindah ke solo setelah bareng
+  // bersihkan audio peer
+  const peerAudio = document.getElementById('peerAudio');
+  if (peerAudio) { peerAudio.srcObject = null; peerAudio.remove(); }
+
+  // reset UI overlay dan status
   connectingOverlay.style.display = 'none';
   stageNote.textContent = 'pilih layout & tekan jepret!';
 
@@ -845,9 +879,23 @@ document.getElementById('downloadBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('retakeBtn').addEventListener('click',()=>{
-  capturedPhotos=[]; peerPhotos={};
+  // reset state foto saja — JANGAN putus koneksi WebRTC/WebSocket
+  capturedPhotos = [];
+  peerPhotos     = {};
   buildProgressDots();
-  stageNote.textContent='pilih layout & tekan jepret!';
+  stageNote.textContent = mode === 'together'
+    ? '🎀 tersambung! pilih layout & tekan jepret!'
+    : 'pilih layout & tekan jepret!';
+
+  // pastikan kamera tetap jalan (tidak dimatikan)
+  if (localStream) videoYou.srcObject = localStream;
+
+  // mode bareng: pastikan overlay peer tidak muncul lagi
+  if (mode === 'together' && remoteStream) {
+    videoPeer.srcObject = remoteStream;
+    connectingOverlay.style.display = 'none';
+  }
+
   showScreen('screenBooth');
 });
 
@@ -917,11 +965,32 @@ callBtn.addEventListener('click', async () => {
 
 async function startCall() {
   try {
-    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    // tambahkan audio track ke RTCPeerConnection yang sudah ada
+    audioStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl:  true,
+      },
+      video: false,
+    });
+
     if (pc) {
+      // tambah audio track ke peer connection
       audioStream.getAudioTracks().forEach(t => pc.addTrack(t, audioStream));
+
+      // trigger renegotiation agar peer tahu ada track audio baru
+      // ini penting! tanpa ini suara tidak akan mengalir
+      if (userNum === 1) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+        }
+      }
+      // userNum 2 akan otomatis dapat offer dari userNum 1
+      // dan mengirim answer balik via handleSignal
     }
+
     callActive = true;
     isMuted    = false;
     callBtn.classList.add('active');
@@ -937,6 +1006,13 @@ async function startCall() {
 
 function stopCall() {
   if (audioStream) {
+    // hapus audio sender dari pc agar peer tidak dengar suara lagi
+    if (pc) {
+      const senders = pc.getSenders().filter(s => s.track?.kind === 'audio');
+      senders.forEach(s => {
+        try { pc.removeTrack(s); } catch(e){}
+      });
+    }
     audioStream.getTracks().forEach(t => t.stop());
     audioStream = null;
   }
