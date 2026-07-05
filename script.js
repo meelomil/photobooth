@@ -286,8 +286,6 @@ async function startWebRTC_asInitiator() {
   iceCandidateQueue = [];
   createPeerConnection();
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  // tambah audio transceiver placeholder — inactive dulu, aktif saat call dimulai
-  pc.addTransceiver('audio', { direction: 'inactive' });
   const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
   await pc.setLocalDescription(offer);
   ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
@@ -297,8 +295,6 @@ async function startWebRTC_asReceiver() {
   iceCandidateQueue = [];
   createPeerConnection();
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  // tambah audio transceiver placeholder — inactive dulu
-  pc.addTransceiver('audio', { direction: 'inactive' });
 }
 
 // Batasi bitrate video sender agar tidak patah-patah
@@ -364,6 +360,25 @@ function createPeerConnection() {
 
   // audio pakai replaceTrack — tidak butuh renegotiation otomatis
   // pc.onnegotiationneeded dibiarkan default (tidak di-override)
+  let _renegotiating = false;
+  pc.onnegotiationneeded = async () => {
+    if (userNum !== 1) return;
+    if (_renegotiating) return;
+    if (pc.signalingState !== 'stable') return;
+    _renegotiating = true;
+    try {
+      const offer = await pc.createOffer();
+      if (pc.signalingState !== 'stable') return;
+      await pc.setLocalDescription(offer);
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+      }
+    } catch(e) {
+      console.warn('renegotiation skipped:', e.message);
+    } finally {
+      _renegotiating = false;
+    }
+  };
 
   pc.onconnectionstatechange = async () => {
     console.log('WebRTC state:', pc.connectionState);
@@ -1035,19 +1050,16 @@ async function startCall() {
 
     if (pc) {
       const audioTrack = audioStream.getAudioTracks()[0];
-      // cari transceiver audio yang sudah ada (placeholder inactive)
+      // cari transceiver audio yang sudah ada
       const audioTransceiver = pc.getTransceivers().find(t =>
         t.sender?.track === null || t.sender?.track?.kind === 'audio'
       );
       if (audioTransceiver) {
-        // aktifkan transceiver dan ganti track — TIDAK trigger renegotiation
         await audioTransceiver.sender.replaceTrack(audioTrack);
         audioTransceiver.direction = 'sendrecv';
-        callStatus.textContent = '🟢 call aktif';
       } else {
-        console.warn('Audio transceiver tidak ditemukan');
-        callStatus.textContent = '⚠️ Gagal memulai call, coba refresh';
-        return;
+        // belum ada — addTrack biasa, browser handle renegotiation sendiri
+        pc.addTrack(audioTrack, audioStream);
       }
     }
 
