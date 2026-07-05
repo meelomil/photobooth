@@ -362,23 +362,8 @@ function createPeerConnection() {
     }
   };
 
-  // auto renegotiate HANYA saat ada track audio baru (call)
-  // video tidak perlu renegotiate karena sudah ada dari awal
-  pc.onnegotiationneeded = async () => {
-    if (userNum !== 1) return;
-    // hanya jalankan kalau memang ada audio track yang baru ditambah
-    const audioSenders = pc.getSenders().filter(s => s.track?.kind === 'audio');
-    if (audioSenders.length === 0) return;
-    try {
-      const offer = await pc.createOffer();
-      // pastikan setLocalDescription tidak konflik dengan state sebelumnya
-      if (pc.signalingState !== 'stable') return;
-      await pc.setLocalDescription(offer);
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
-      }
-    } catch(e) { console.warn('renegotiation error:', e); }
-  };
+  // audio pakai replaceTrack — tidak butuh renegotiation otomatis
+  // pc.onnegotiationneeded dibiarkan default (tidak di-override)
 
   pc.onconnectionstatechange = async () => {
     console.log('WebRTC state:', pc.connectionState);
@@ -1050,19 +1035,19 @@ async function startCall() {
 
     if (pc) {
       const audioTrack = audioStream.getAudioTracks()[0];
-      // cek apakah sudah ada audio sender (null track = placeholder)
-      const existingSender = pc.getSenders().find(s =>
-        s.track === null || s.track?.kind === 'audio'
+      // cari transceiver audio yang sudah ada (placeholder inactive)
+      const audioTransceiver = pc.getTransceivers().find(t =>
+        t.sender?.track === null || t.sender?.track?.kind === 'audio'
       );
-      if (existingSender) {
-        // replaceTrack TIDAK trigger renegotiation — lebih aman
-        await existingSender.replaceTrack(audioTrack);
+      if (audioTransceiver) {
+        // aktifkan transceiver dan ganti track — TIDAK trigger renegotiation
+        await audioTransceiver.sender.replaceTrack(audioTrack);
+        audioTransceiver.direction = 'sendrecv';
         callStatus.textContent = '🟢 call aktif';
       } else {
-        // belum ada audio sender sama sekali — pakai addTransceiver
-        // addTransceiver lebih stabil dari addTrack untuk kasus ini
-        pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [audioStream] });
-        // onnegotiationneeded akan handle sisanya
+        console.warn('Audio transceiver tidak ditemukan');
+        callStatus.textContent = '⚠️ Gagal memulai call, coba refresh';
+        return;
       }
     }
 
@@ -1081,12 +1066,16 @@ async function startCall() {
 
 function stopCall() {
   if (audioStream) {
-    // hapus audio sender dari pc agar peer tidak dengar suara lagi
+    // pause audio tanpa hapus sender — gunakan replaceTrack(null)
+    // removeTrack akan mengubah m-lines dan menyebabkan error renegotiation
     if (pc) {
-      const senders = pc.getSenders().filter(s => s.track?.kind === 'audio');
-      senders.forEach(s => {
-        try { pc.removeTrack(s); } catch(e){}
-      });
+      const audioTransceiver = pc.getTransceivers().find(t =>
+        t.sender?.track?.kind === 'audio'
+      );
+      if (audioTransceiver) {
+        audioTransceiver.sender.replaceTrack(null);
+        audioTransceiver.direction = 'inactive';
+      }
     }
     audioStream.getTracks().forEach(t => t.stop());
     audioStream = null;
