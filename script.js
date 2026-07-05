@@ -401,19 +401,19 @@ function createPeerConnection() {
       connectingOverlay.style.display = 'none';
       stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
     } else if (e.track.kind === 'audio') {
-      // buat elemen audio tersembunyi untuk putar suara peer
-      let peerAudio = document.getElementById('peerAudio');
-      if (!peerAudio) {
-        peerAudio = document.createElement('audio');
-        peerAudio.id       = 'peerAudio';
-        peerAudio.autoplay = true;
-        peerAudio.style.display = 'none';
-        document.body.appendChild(peerAudio);
-      }
-      if (!peerAudio.srcObject) {
-        peerAudio.srcObject = new MediaStream([e.track]);
-      } else {
-        peerAudio.srcObject.addTrack(e.track);
+      const peerAudio = document.getElementById('peerAudio');
+      if (peerAudio) {
+        if (!peerAudio.srcObject) {
+          peerAudio.srcObject = new MediaStream([e.track]);
+        } else {
+          peerAudio.srcObject.addTrack(e.track);
+        }
+        peerAudio.volume = 1.0;
+        // paksa play dengan user gesture context
+        peerAudio.play().catch(() => {
+          // kalau autoplay diblokir, tampilkan tombol aktifkan suara
+          showUnmuteBtn();
+        });
       }
       callStatus.textContent = '🟢 call aktif';
     }
@@ -427,9 +427,13 @@ function cleanupConnection() {
   remoteStream = null;
   videoPeer.srcObject = null;
 
-  // bersihkan audio peer
+  // reset peerAudio tapi jangan hapus elemennya (sudah di HTML)
   const peerAudio = document.getElementById('peerAudio');
-  if (peerAudio) { peerAudio.srcObject = null; peerAudio.remove(); }
+  if (peerAudio) { peerAudio.srcObject = null; peerAudio.pause(); }
+
+  // sembunyikan tombol unmute kalau ada
+  const unmuteBtn = document.getElementById('unmutePrompt');
+  if (unmuteBtn) unmuteBtn.remove();
 
   // reset UI overlay dan status
   connectingOverlay.style.display = 'none';
@@ -442,6 +446,30 @@ function cleanupConnection() {
   waitStatus.textContent = 'Menunggu teman masuk… ♡';
   joinCodeInput.value = '';
   joinError.textContent = '';
+}
+
+// Tampilkan tombol "Aktifkan Suara" kalau autoplay diblokir browser
+function showUnmuteBtn() {
+  if (document.getElementById('unmutePrompt')) return;
+  const btn = document.createElement('button');
+  btn.id = 'unmutePrompt';
+  btn.textContent = '🔊 Tap untuk aktifkan suara';
+  btn.style.cssText = `
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,#ff6fa5,#ff9ec4); color:#fff;
+    border:none; border-radius:20px; padding:12px 24px;
+    font-family:'Poppins',sans-serif; font-weight:600; font-size:14px;
+    cursor:pointer; z-index:300; box-shadow:0 6px 20px rgba(255,111,165,0.4);
+  `;
+  btn.onclick = () => {
+    const peerAudio = document.getElementById('peerAudio');
+    if (peerAudio) {
+      peerAudio.volume = 1.0;
+      peerAudio.play().catch(e => console.warn(e));
+    }
+    btn.remove();
+  };
+  document.body.appendChild(btn);
 }
 
 // ===== Camera =====
@@ -982,6 +1010,13 @@ async function startCall() {
       },
       video: false,
     });
+
+    // pastikan volume peerAudio max sebelum mulai
+    const peerAudio = document.getElementById('peerAudio');
+    if (peerAudio) {
+      peerAudio.volume = 1.0;
+      peerAudio.muted  = false;
+    }
 
     if (pc) {
       // tambah audio track ke peer connection
