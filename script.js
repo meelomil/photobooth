@@ -376,11 +376,20 @@ function createPeerConnection() {
     if (pc.connectionState === 'connected') {
       connectingOverlay.style.display = 'none';
       stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
-      // terapkan batas bandwidth setelah tersambung
-      await applyVideoBandwidth(pc, 500); // maks 500 kbps
+      await applyVideoBandwidth(pc, 500);
+
+      // watchdog: kalau 3 detik video masih blank, paksa ulang srcObject
+      setTimeout(() => {
+        if (videoPeer.readyState === 0 && remoteStream) {
+          console.warn('video watchdog: paksa ulang srcObject');
+          videoPeer.srcObject = null;
+          videoPeer.srcObject = remoteStream;
+          videoPeer.play().catch(e => console.warn(e));
+          connectingOverlay.style.display = 'none';
+        }
+      }, 3000);
     }
     if (pc.connectionState === 'disconnected') {
-      // coba reconnect otomatis setelah 2 detik
       setTimeout(() => {
         if (pc?.connectionState === 'disconnected') {
           stageNote.textContent = '⚠️ koneksi tidak stabil, mencoba ulang…';
@@ -395,29 +404,41 @@ function createPeerConnection() {
   };
 
   pc.ontrack = e => {
+    console.log('ontrack:', e.track.kind, e.streams.length);
+
     if (e.track.kind === 'video') {
-      remoteStream = e.streams[0];
+      // pastikan srcObject selalu diupdate
+      if (e.streams && e.streams[0]) {
+        remoteStream = e.streams[0];
+      } else {
+        // fallback: buat MediaStream dari track langsung
+        remoteStream = new MediaStream([e.track]);
+      }
       videoPeer.srcObject = remoteStream;
+      videoPeer.play().catch(err => console.warn('videoPeer play error:', err));
       connectingOverlay.style.display = 'none';
       stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+
     } else if (e.track.kind === 'audio') {
       const peerAudio = document.getElementById('peerAudio');
       if (peerAudio) {
         if (!peerAudio.srcObject) {
           peerAudio.srcObject = new MediaStream([e.track]);
         } else {
-          peerAudio.srcObject.addTrack(e.track);
+          try { peerAudio.srcObject.addTrack(e.track); } catch(err) {
+            peerAudio.srcObject = new MediaStream([e.track]);
+          }
         }
         peerAudio.volume = 1.0;
-        // paksa play dengan user gesture context
-        peerAudio.play().catch(() => {
-          // kalau autoplay diblokir, tampilkan tombol aktifkan suara
-          showUnmuteBtn();
-        });
+        peerAudio.muted  = false;
+        peerAudio.play().catch(() => showUnmuteBtn());
       }
       callStatus.textContent = '🟢 call aktif';
     }
   };
+
+  // fallback: kalau 3 detik setelah connected video masih tidak muncul, coba ulang srcObject
+  pc.onconnectionstatechange_video_watchdog = null;
 }
 
 function cleanupConnection() {
