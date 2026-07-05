@@ -195,10 +195,15 @@ async function handleSignal(event) {
       resetChat();
       await startBooth();
       showScreen('screenBooth');
-      setCommFabVisible(true);   // tampilkan tombol chat+call
+      setCommFabVisible(true);
       await waitForVideoTrack(videoYou);
-      if (userNum === 1) await startWebRTC_asInitiator();
-      else               await startWebRTC_asReceiver();
+      if (userNum === 1) {
+        await startWebRTC_asInitiator();
+        // user 1 kirim state settingnya ke user 2 yang baru join
+        setTimeout(() => broadcastSettings(), 800);
+      } else {
+        await startWebRTC_asReceiver();
+      }
       break;
 
     case 'offer':
@@ -236,6 +241,11 @@ async function handleSignal(event) {
 
     case 'sync-settings':
       applySettings(msg.settings);
+      break;
+
+    case 'request-settings':
+      // peer minta state kita — kirim balik
+      broadcastSettings();
       break;
 
     case 'do-capture':
@@ -542,7 +552,7 @@ function broadcastSettings() {
 
 function applySettings(settings) {
   // layout
-  if (settings.layout && settings.layout !== currentLayout) {
+  if (settings.layout) {
     currentLayout = settings.layout;
     document.querySelectorAll('#layoutOptions .opt-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.layout === currentLayout);
@@ -552,25 +562,24 @@ function applySettings(settings) {
     capturedPhotos = []; peerPhotos = {};
   }
   // filter
-  if (settings.filter && settings.filter !== currentFilter) {
+  if (settings.filter) {
     currentFilter = settings.filter;
     document.querySelectorAll('#filterOptions .opt-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.filter === currentFilter);
     });
     videoYou.style.filter = FILTER_CSS[currentFilter];
   }
-  // theme
-  if (settings.theme && settings.theme !== currentTheme) {
+  // theme — update semua tombol tema sekaligus
+  if (settings.theme) {
     currentTheme = settings.theme;
-    document.querySelectorAll('.tpl-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.theme === currentTheme);
-    });
-    document.querySelectorAll('#solidThemeOptions .swatch').forEach(s => {
-      s.classList.toggle('active', s.dataset.theme === currentTheme);
-    });
-    document.querySelectorAll('#customFrameOptions .tpl-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.theme === currentTheme);
-    });
+    // clear semua dulu
+    document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#solidThemeOptions .swatch').forEach(s => s.classList.remove('active'));
+    // aktifkan yang sesuai
+    document.querySelectorAll(`.tpl-btn[data-theme="${currentTheme}"]`).forEach(b => b.classList.add('active'));
+    document.querySelectorAll(`#solidThemeOptions .swatch[data-theme="${currentTheme}"]`).forEach(s => s.classList.add('active'));
+    // preload kalau custom frame
+    if (ALL_THEMES[currentTheme]?.preload) ALL_THEMES[currentTheme].preload();
   }
   // caption
   if (settings.caption !== undefined) {
