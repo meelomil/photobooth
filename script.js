@@ -286,7 +286,9 @@ async function startWebRTC_asInitiator() {
   iceCandidateQueue = [];
   createPeerConnection();
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: true });
+  // tambah audio transceiver placeholder — inactive dulu, aktif saat call dimulai
+  pc.addTransceiver('audio', { direction: 'inactive' });
+  const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
   await pc.setLocalDescription(offer);
   ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
 }
@@ -295,6 +297,8 @@ async function startWebRTC_asReceiver() {
   iceCandidateQueue = [];
   createPeerConnection();
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  // tambah audio transceiver placeholder — inactive dulu
+  pc.addTransceiver('audio', { direction: 'inactive' });
 }
 
 // Batasi bitrate video sender agar tidak patah-patah
@@ -358,12 +362,17 @@ function createPeerConnection() {
     }
   };
 
-  // auto renegotiate saat ada track baru (misal saat call dimulai)
+  // auto renegotiate HANYA saat ada track audio baru (call)
+  // video tidak perlu renegotiate karena sudah ada dari awal
   pc.onnegotiationneeded = async () => {
-    // hanya initiator (userNum 1) yang buat offer baru
     if (userNum !== 1) return;
+    // hanya jalankan kalau memang ada audio track yang baru ditambah
+    const audioSenders = pc.getSenders().filter(s => s.track?.kind === 'audio');
+    if (audioSenders.length === 0) return;
     try {
       const offer = await pc.createOffer();
+      // pastikan setLocalDescription tidak konflik dengan state sebelumnya
+      if (pc.signalingState !== 'stable') return;
       await pc.setLocalDescription(offer);
       if (ws?.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
@@ -1040,20 +1049,21 @@ async function startCall() {
     }
 
     if (pc) {
-      // tambah audio track ke peer connection
-      audioStream.getAudioTracks().forEach(t => pc.addTrack(t, audioStream));
-
-      // trigger renegotiation agar peer tahu ada track audio baru
-      // ini penting! tanpa ini suara tidak akan mengalir
-      if (userNum === 1) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
-        }
+      const audioTrack = audioStream.getAudioTracks()[0];
+      // cek apakah sudah ada audio sender (null track = placeholder)
+      const existingSender = pc.getSenders().find(s =>
+        s.track === null || s.track?.kind === 'audio'
+      );
+      if (existingSender) {
+        // replaceTrack TIDAK trigger renegotiation — lebih aman
+        await existingSender.replaceTrack(audioTrack);
+        callStatus.textContent = '🟢 call aktif';
+      } else {
+        // belum ada audio sender sama sekali — pakai addTransceiver
+        // addTransceiver lebih stabil dari addTrack untuk kasus ini
+        pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [audioStream] });
+        // onnegotiationneeded akan handle sisanya
       }
-      // userNum 2 akan otomatis dapat offer dari userNum 1
-      // dan mengirim answer balik via handleSignal
     }
 
     callActive = true;
