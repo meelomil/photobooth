@@ -21,6 +21,7 @@ let remoteStream = null;
 let currentLayout = 'strip3';
 let currentFilter = 'none';
 let currentTheme  = 'capybara';
+let currentTimer  = 3; // detik, 0 = manual
 
 // captured photos: solo → array of dataUrls; together → [{you, peer}]
 let capturedPhotos = [];
@@ -83,6 +84,31 @@ const workCanvas   = document.getElementById('workCanvas');
 const camYouLabel    = document.getElementById('camYouLabel');
 const camToggleBtn   = document.getElementById('camToggleBtn');
 const camToggleIcon  = document.getElementById('camToggleIcon');
+
+// ── Room info chip ──
+const roomInfo     = document.getElementById('roomInfo');
+const roomInfoCode = document.getElementById('roomInfoCode');
+const roomInfoCopy = document.getElementById('roomInfoCopy');
+
+function showRoomInfo(code) {
+  if (!roomInfo || !roomInfoCode) return;
+  roomInfoCode.textContent = code;
+  roomInfo.style.display   = 'flex';
+}
+function hideRoomInfo() {
+  if (!roomInfo) return;
+  roomInfo.style.display   = 'none';
+  roomInfoCode.textContent = '------';
+}
+
+roomInfoCopy?.addEventListener('click', () => {
+  const code = roomInfoCode?.textContent;
+  if (!code || code === '------') return;
+  navigator.clipboard.writeText(code).then(() => {
+    roomInfoCopy.textContent = '✅';
+    setTimeout(() => { roomInfoCopy.textContent = '📋'; }, 1500);
+  });
+});
 const camToggleText  = document.getElementById('camToggleText');
 const camOffOverlay  = document.getElementById('camOffOverlay');
 
@@ -118,6 +144,7 @@ btnSolo.addEventListener('click', () => {
   camPeer.classList.add('hidden');
   camYouLabel.textContent = 'kamu';
   setCommFabVisible(false);
+  hideRoomInfo();
   startBooth();
   showScreen('screenBooth');
 });
@@ -137,6 +164,7 @@ document.getElementById('btnBackBooth').addEventListener('click', () => {
   stopCamera();
   doStopCall();
   setCommFabVisible(false);
+  hideRoomInfo();
   showScreen('screenHome');
 });
 
@@ -195,11 +223,11 @@ async function handleSignal(event) {
       resetChat();
       await startBooth();
       showScreen('screenBooth');
+      showRoomInfo(roomCode);
       setCommFabVisible(true);
       await waitForVideoTrack(videoYou);
       if (userNum === 1) {
         await startWebRTC_asInitiator();
-        // user 1 kirim state settingnya ke user 2 yang baru join
         setTimeout(() => broadcastSettings(), 800);
       } else {
         await startWebRTC_asReceiver();
@@ -568,6 +596,14 @@ function stopCamera() {
 }
 
 // sync caption polaroid saat diketik
+document.getElementById('timerOptions').addEventListener('click', e => {
+  const btn = e.target.closest('.opt-btn'); if (!btn) return;
+  document.querySelectorAll('#timerOptions .opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTimer = parseInt(btn.dataset.timer);
+  broadcastSettings();
+});
+
 captionField.addEventListener('input', () => broadcastSettings());
 
 // Tunggu sampai video element benar-benar punya data (kamera aktif)
@@ -611,6 +647,7 @@ function broadcastSettings() {
       filter:  currentFilter,
       theme:   currentTheme,
       caption: captionField.value,
+      timer:   currentTimer,
     }
   }));
 }
@@ -645,6 +682,13 @@ function applySettings(settings) {
     document.querySelectorAll(`#solidThemeOptions .swatch[data-theme="${currentTheme}"]`).forEach(s => s.classList.add('active'));
     // preload kalau custom frame
     if (ALL_THEMES[currentTheme]?.preload) ALL_THEMES[currentTheme].preload();
+  }
+  // timer
+  if (settings.timer !== undefined) {
+    currentTimer = settings.timer;
+    document.querySelectorAll('#timerOptions .opt-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.timer) === currentTimer);
+    });
   }
   // caption
   if (settings.caption !== undefined) {
@@ -703,12 +747,11 @@ shutterBtn.addEventListener('click', async () => {
       stageNote.textContent = '⚠️ Belum tersambung ke teman!';
       return;
     }
-    // kirim timestamp agar countdown mulai di waktu yang sama
-    const startAt = Date.now() + 300; // beri jeda 300ms untuk WebSocket sampai
-    ws.send(JSON.stringify({ type: 'trigger-capture', countdown: 3, startAt }));
+    const startAt = Date.now() + 300;
+    ws.send(JSON.stringify({ type: 'trigger-capture', countdown: currentTimer, startAt }));
     await waitUntil(startAt);
   }
-  await runCaptureSequence(3);
+  await runCaptureSequence(currentTimer);
 });
 
 // ===== Capture sequence =====
@@ -776,6 +819,15 @@ async function runCaptureSequence(cdSecs = 3) {
 }
 
 async function countdownAnim(seconds) {
+  // mode manual — langsung ambil foto tanpa countdown
+  if (!seconds || seconds === 0) {
+    countdownEl.style.display = 'flex';
+    countdownEl.textContent   = '📸';
+    await sleep(200);
+    countdownEl.style.display = 'none';
+    return;
+  }
+
   return new Promise(resolve => {
     countdownEl.style.display = 'flex';
     let current = seconds;
@@ -786,7 +838,6 @@ async function countdownAnim(seconds) {
       if (current >= 1) {
         countdownEl.textContent = current;
       } else {
-        // selesai countdown
         clearInterval(interval);
         countdownEl.textContent = '📸';
         setTimeout(() => {
@@ -794,7 +845,9 @@ async function countdownAnim(seconds) {
           resolve();
         }, 300);
       }
-    }, 1000); // tepat 1 detik per angka, tidak ada yang terlewat
+    }, 1000);
+  });
+}
   });
 }
 
@@ -976,6 +1029,7 @@ document.getElementById('retakeBtn').addEventListener('click',()=>{
 document.getElementById('homeBtn').addEventListener('click',()=>{
   cleanupConnection(); stopCamera();
   doStopCall();
+  hideRoomInfo();
   showScreen('screenHome');
 });
 
