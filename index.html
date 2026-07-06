@@ -83,7 +83,15 @@
   <div class="screen" id="screenBooth">
     <header class="hero small">
       <h1>Caca Booth 🎀</h1>
-      <span class="mode-badge" id="modeBadge">solo</span>
+      <div class="booth-header-row">
+        <span class="mode-badge" id="modeBadge">solo</span>
+        <!-- info kode room — hanya muncul di mode bareng -->
+        <div class="room-info" id="roomInfo" style="display:none">
+          <span class="room-info-label">Kode Room:</span>
+          <span class="room-info-code" id="roomInfoCode">------</span>
+          <button class="room-info-copy" id="roomInfoCopy" title="Salin kode">📋</button>
+        </div>
+      </div>
     </header>
 
     <div class="booth-wrap">
@@ -100,6 +108,16 @@
             <button class="opt-btn" data-layout="polaroid">Polaroid</button>
           </div>
           <input type="text" id="captionField" class="caption-input" placeholder="caption polaroid…" maxlength="28">
+        </div>
+
+        <div class="ctrl-section">
+          <label>Timer</label>
+          <div class="option-grid" id="timerOptions">
+            <button class="opt-btn" data-timer="0">Manual</button>
+            <button class="opt-btn active" data-timer="3">3 detik</button>
+            <button class="opt-btn" data-timer="5">5 detik</button>
+            <button class="opt-btn" data-timer="10">10 detik</button>
+          </div>
         </div>
 
         <div class="ctrl-section">
