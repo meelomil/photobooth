@@ -135,7 +135,7 @@ document.getElementById('btnBackHome').addEventListener('click', () => {
 document.getElementById('btnBackBooth').addEventListener('click', () => {
   cleanupConnection();
   stopCamera();
-  stopCall();
+  doStopCall();
   setCommFabVisible(false);
   showScreen('screenHome');
 });
@@ -262,6 +262,13 @@ async function handleSignal(event) {
 
     case 'chat-message':
       addChatBubble(msg.text, 'peer', msg.time);
+      break;
+
+    case 'call-invite':
+    case 'call-accept':
+    case 'call-reject':
+    case 'call-end':
+      handleCallSignal(msg.type);
       break;
 
     case 'peer-left':
@@ -968,7 +975,7 @@ document.getElementById('retakeBtn').addEventListener('click',()=>{
 
 document.getElementById('homeBtn').addEventListener('click',()=>{
   cleanupConnection(); stopCamera();
-  stopCall();
+  doStopCall();
   showScreen('screenHome');
 });
 
@@ -1025,12 +1032,85 @@ function setCommFabVisible(visible) {
 }
 
 // ── CALL ──
+const ringPopup  = document.getElementById('ringPopup');
+const ringAccept = document.getElementById('ringAccept');
+const ringReject = document.getElementById('ringReject');
+
 callBtn.addEventListener('click', async () => {
-  if (!callActive) await startCall();
-  else             stopCall();
+  if (!callActive) {
+    // kirim invite ke peer dulu
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      callStatus.textContent = '⚠️ Belum tersambung ke teman!';
+      return;
+    }
+    ws.send(JSON.stringify({ type: 'call-invite' }));
+    callStatus.textContent  = '📞 Memanggil teman…';
+    callBtnText.textContent = 'Batalkan';
+    callBtnIcon.textContent = '📵';
+  } else {
+    // akhiri call
+    ws?.send(JSON.stringify({ type: 'call-end' }));
+    await doStopCall();
+  }
 });
 
-async function startCall() {
+// teman menekan tolak
+ringReject.addEventListener('click', () => {
+  ringPopup.style.display = 'none';
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'call-reject' }));
+  }
+  callStatus.textContent = '';
+});
+
+// teman menekan terima
+ringAccept.addEventListener('click', async () => {
+  ringPopup.style.display = 'none';
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'call-accept' }));
+  }
+  await doStartCall();
+});
+
+// handler call dari handleSignal
+function handleCallSignal(type) {
+  switch(type) {
+    case 'call-invite':
+      // tampilkan ringing popup ke peer
+      ringPopup.style.display = 'block';
+      // auto tolak kalau tidak direspons dalam 30 detik
+      setTimeout(() => {
+        if (ringPopup.style.display === 'block') {
+          ringPopup.style.display = 'none';
+          ws?.send(JSON.stringify({ type: 'call-reject' }));
+        }
+      }, 30000);
+      break;
+
+    case 'call-accept':
+      // peer menerima — kita (si pemanggil) mulai call
+      callStatus.textContent = '🟢 call aktif';
+      doStartCall();
+      break;
+
+    case 'call-reject':
+      // peer menolak
+      callStatus.textContent  = '❌ Teman menolak call';
+      callBtnText.textContent = 'Mulai Call';
+      callBtnIcon.textContent = '🎙️';
+      setTimeout(() => { callStatus.textContent = ''; }, 3000);
+      break;
+
+    case 'call-end':
+      // peer mengakhiri call
+      doStopCall();
+      callStatus.textContent = 'Call diakhiri teman';
+      setTimeout(() => { callStatus.textContent = ''; }, 3000);
+      break;
+  }
+}
+
+async function doStartCall() {
   try {
     audioStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -1041,16 +1121,11 @@ async function startCall() {
       video: false,
     });
 
-    // pastikan volume peerAudio max sebelum mulai
     const peerAudio = document.getElementById('peerAudio');
-    if (peerAudio) {
-      peerAudio.volume = 1.0;
-      peerAudio.muted  = false;
-    }
+    if (peerAudio) { peerAudio.volume = 1.0; peerAudio.muted = false; }
 
     if (pc) {
       const audioTrack = audioStream.getAudioTracks()[0];
-      // cari transceiver audio yang sudah ada
       const audioTransceiver = pc.getTransceivers().find(t =>
         t.sender?.track === null || t.sender?.track?.kind === 'audio'
       );
@@ -1058,7 +1133,6 @@ async function startCall() {
         await audioTransceiver.sender.replaceTrack(audioTrack);
         audioTransceiver.direction = 'sendrecv';
       } else {
-        // belum ada — addTrack biasa, browser handle renegotiation sendiri
         pc.addTrack(audioTrack, audioStream);
       }
     }
@@ -1076,10 +1150,8 @@ async function startCall() {
   }
 }
 
-function stopCall() {
+async function doStopCall() {
   if (audioStream) {
-    // pause audio tanpa hapus sender — gunakan replaceTrack(null)
-    // removeTrack akan mengubah m-lines dan menyebabkan error renegotiation
     if (pc) {
       const audioTransceiver = pc.getTransceivers().find(t =>
         t.sender?.track?.kind === 'audio'
@@ -1101,7 +1173,6 @@ function stopCall() {
   muteBtn.classList.remove('muted');
   muteBtnIcon.textContent = '🔇';
   muteBtnText.textContent = 'Mute';
-  callStatus.textContent  = '';
 }
 
 muteBtn.addEventListener('click', () => {
@@ -1160,5 +1231,6 @@ function resetChat() {
   chatMessages.innerHTML = '<div class="chat-empty">belum ada pesan… mulai ngobrol! ♡</div>';
   chatBadge.style.display = 'none';
   chatInput.value = '';
-  stopCall();
+  doStopCall();
+  if (ringPopup) ringPopup.style.display = 'none';
 }
