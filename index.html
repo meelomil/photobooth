@@ -269,6 +269,18 @@
 
   <!-- Audio element untuk suara peer call — harus ada di HTML agar autoplay dipercaya browser -->
   <audio id="peerAudio" autoplay playsinline style="display:none"></audio>
+
+  <!-- RINGING POPUP — muncul saat teman mengajak call -->
+  <div class="ring-popup" id="ringPopup" style="display:none">
+    <div class="ring-inner">
+      <div class="ring-icon">📞</div>
+      <p class="ring-title">Teman mengajak call!</p>
+      <div class="ring-actions">
+        <button class="ring-accept" id="ringAccept">✅ Terima</button>
+        <button class="ring-reject" id="ringReject">❌ Tolak</button>
+      </div>
+    </div>
+  </div>
 <script src="templates.js"></script>
 <script src="script.js"></script>
 </body>
