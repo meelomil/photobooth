@@ -848,8 +848,6 @@ async function countdownAnim(seconds) {
     }, 1000);
   });
 }
-  });
-}
 
 function captureFrame(videoEl, filterStr) {
   const w = videoEl.videoWidth || 1280, h = videoEl.videoHeight || 960;
