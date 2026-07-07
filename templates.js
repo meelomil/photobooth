@@ -234,16 +234,16 @@ const CUSTOM_FRAME_URLS = {
   // │  GANTI 4 LINK DI BAWAH INI DENGAN LINK GAMBAR FRAMEMU      │
   // └─────────────────────────────────────────────────────────────┘
 
-  custom1: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame1.png',
+  custom1: 'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/1.png',
   // ↑ Template 1 — ganti USERNAME, REPO, dan nama file
 
-  custom2: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame2.png',
+  custom2: 'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/5.png',
   // ↑ Template 2 — ganti USERNAME, REPO, dan nama file
 
-  custom3: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame3.png',
+  custom3: 'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/4.png',
   // ↑ Template 3 — ganti USERNAME, REPO, dan nama file
 
-  custom4: 'https://raw.githubusercontent.com/USERNAME/REPO/main/frames/frame4.png',
+  custom4: 'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/2.png',
   // ↑ Template 4 — ganti USERNAME, REPO, dan nama file
 };
 
