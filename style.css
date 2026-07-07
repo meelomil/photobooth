@@ -35,7 +35,7 @@ body {
 
 /* ── floating stickers ── */
 .floaters { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
-.floater  { position:absolute; font-size:28px; opacity:0.45; animation:drift 9s ease-in-out infinite; }
+.floater  { position:absolute; font-size:28px; opacity:0.45; animation:drift 9s ease-in-out infinite; pointer-events:none; }
 .floater.f1{top:7%;left:5%;color:var(--pink);animation-duration:8s}
 .floater.f2{top:14%;left:88%;color:var(--lilac);animation-duration:10s;animation-delay:.5s}
 .floater.f3{top:42%;left:3%;color:#4fd8a8;animation-duration:7.5s;animation-delay:1s}
@@ -70,7 +70,7 @@ body {
   cursor:pointer; width:210px; text-align:center;
   display:flex; flex-direction:column; align-items:center; gap:8px;
   box-shadow:var(--shadow); transition:transform .15s ease,box-shadow .15s ease;
-  position:relative;
+  position:relative; z-index:2;
 }
 .mode-card:hover { transform:translateY(-4px); box-shadow:0 20px 44px rgba(178,141,255,0.24); }
 .mode-card.featured { border-color:var(--pink); }
