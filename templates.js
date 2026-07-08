@@ -119,7 +119,7 @@ Object.values(SOLID_THEMES).forEach(t => {
 
 const CUSTOM_FRAME_URLS = {
 
-  // ── TEMA 1 ──────────────────────────────────────────────────────
+  // ── CAPYBARA ────────────────────────────────────────────────────
   custom1: {
     thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/1.png',
     solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/1.png',
@@ -132,7 +132,7 @@ const CUSTOM_FRAME_URLS = {
     duo_polaroid:  '',
   },
 
-  // ── TEMA 2 ──────────────────────────────────────────────────────
+  // ── MAKANAN ─────────────────────────────────────────────────────
   custom2: {
     thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/2.png',
     solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/2.png',
@@ -145,10 +145,10 @@ const CUSTOM_FRAME_URLS = {
     duo_polaroid:  '',
   },
 
-  // ── TEMA 3 ──────────────────────────────────────────────────────
+  // ── TANAMAN ─────────────────────────────────────────────────────
   custom3: {
-    thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/3.png',
-    solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/3.png',
+    thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/4.png',
+    solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/4.png',
     solo_strip4:   '',
     solo_grid2x2:  '',
     solo_polaroid: '',
@@ -158,10 +158,10 @@ const CUSTOM_FRAME_URLS = {
     duo_polaroid:  '',
   },
 
-  // ── TEMA 4 ──────────────────────────────────────────────────────
+  // ── MOANA ───────────────────────────────────────────────────────
   custom4: {
-    thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/4.png',
-    solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/4.png',
+    thumbnail:     'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/5.png',
+    solo_strip3:   'https://raw.githubusercontent.com/meelomil/meelomil/main/assets/strip3/5.png',
     solo_strip4:   '',
     solo_grid2x2:  '',
     solo_polaroid: '',
@@ -174,10 +174,10 @@ const CUSTOM_FRAME_URLS = {
 
 // ── Label & meta tiap tema ────────────────────────────────────────
 const CUSTOM_FRAME_META = {
-  custom1: { label: 'Tema 1', text: '#4a3b52', accent: '#ff6fa5', card: '#fff' },
-  custom2: { label: 'Tema 2', text: '#4a3b52', accent: '#b28dff', card: '#fff' },
-  custom3: { label: 'Tema 3', text: '#4a3b52', accent: '#4fd8a8', card: '#fff' },
-  custom4: { label: 'Tema 4', text: '#4a3b52', accent: '#ffcf3f', card: '#fff' },
+  custom1: { label: 'Capybara', text: '#4a3b52', accent: '#ff6fa5', card: '#fff' },
+  custom2: { label: 'Makanan',  text: '#4a3b52', accent: '#e85d00', card: '#fff' },
+  custom3: { label: 'Tanaman',  text: '#2c5a1a', accent: '#4fd8a8', card: '#fff' },
+  custom4: { label: 'Moana',    text: '#0a4f7a', accent: '#f7c948', card: '#fff' },
 };
 
 // ── Cache & loader ────────────────────────────────────────────────
