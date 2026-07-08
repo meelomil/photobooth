@@ -776,6 +776,8 @@ function makeFallback() {
 
 // panggil saat halaman siap
 renderCustomFrameButtons();
+
+function buildProgressDots() {
   const n = mode === 'together'
     ? LAYOUTS_TOGETHER[currentLayout].count
     : LAYOUTS[currentLayout].count;
