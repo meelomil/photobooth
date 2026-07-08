@@ -54,6 +54,17 @@ body {
 }
 .screen.active { display:flex; }
 
+/* pastikan screenHome dan isinya bisa diklik */
+#screenHome {
+  position:relative;
+  z-index:2;
+}
+#screenHome .mode-cards,
+#screenHome .mode-card {
+  position:relative;
+  z-index:3;
+}
+
 /* ── hero ── */
 .hero { text-align:center; padding:44px 20px 16px; }
 .hero.small { padding:18px 20px 8px; }
@@ -345,14 +356,33 @@ video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
 }
 .tpl-btn {
   background:var(--bg); border:2px solid transparent;
-  border-radius:14px; cursor:pointer; padding:8px 4px;
-  display:flex; flex-direction:column; align-items:center; gap:3px;
+  border-radius:14px; cursor:pointer; padding:6px 4px;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
   font-family:'Poppins',sans-serif; font-size:11px; font-weight:500;
-  color:var(--ink); transition:all .14s ease;
+  color:var(--ink); transition:all .14s ease; overflow:hidden;
 }
 .tpl-btn:hover { border-color:var(--pink-soft); background:var(--pink-soft); }
 .tpl-btn.active { border-color:var(--pink); background:var(--pink); color:#fff; }
 .tpl-icon { font-size:22px; line-height:1; }
+
+/* thumbnail gambar di tombol tema */
+.tpl-thumb {
+  width:100%; aspect-ratio:3/4;
+  object-fit:cover; border-radius:8px;
+  border:1px solid rgba(0,0,0,0.06);
+  display:block;
+}
+.tpl-thumb-fallback {
+  width:100%; aspect-ratio:3/4;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; background:var(--pink-soft); border-radius:8px;
+}
+.tpl-btn .tpl-name {
+  font-size:10px; font-weight:600;
+  white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; width:100%; text-align:center;
+  padding:0 2px;
+}
 
 /* swatch warna solid */
 .swatch-row { display:flex; gap:9px; flex-wrap:wrap; }
