@@ -715,7 +715,9 @@ document.getElementById('customFrameOptions').addEventListener('click', e => {
   clearAllThemeSelections();
   btn.classList.add('active');
   currentTheme = btn.dataset.theme;
-  if (ALL_THEMES[currentTheme]?.preload) ALL_THEMES[currentTheme].preload();
+  if (ALL_THEMES[currentTheme]?.preload) {
+    ALL_THEMES[currentTheme].preload(mode, currentLayout);
+  }
   broadcastSettings();
 });
 
@@ -728,7 +730,52 @@ document.getElementById('solidThemeOptions').addEventListener('click', e => {
   broadcastSettings();
 });
 
-function buildProgressDots() {
+// ── Render tombol custom frame dengan thumbnail ──
+function renderCustomFrameButtons() {
+  const container = document.getElementById('customFrameOptions');
+  if (!container) return;
+  container.innerHTML = '';
+
+  ['custom1','custom2','custom3','custom4'].forEach(key => {
+    const meta = CUSTOM_FRAME_META[key];
+    const btn  = document.createElement('button');
+    btn.className   = 'tpl-btn';
+    btn.dataset.theme = key;
+
+    const hasThumb = meta.thumbnail && !meta.thumbnail.includes('USERNAME');
+
+    if (hasThumb) {
+      const img = document.createElement('img');
+      img.src   = meta.thumbnail;
+      img.alt   = meta.label;
+      img.className = 'tpl-thumb';
+      img.onerror = () => {
+        // fallback ke emoji kalau gambar gagal load
+        img.replaceWith(makeFallback());
+      };
+      btn.appendChild(img);
+    } else {
+      btn.appendChild(makeFallback());
+    }
+
+    const name = document.createElement('span');
+    name.className   = 'tpl-name';
+    name.textContent = meta.label.replace(/^[^\w]+/, '').trim(); // hapus emoji di depan
+    btn.appendChild(name);
+
+    container.appendChild(btn);
+  });
+}
+
+function makeFallback() {
+  const el = document.createElement('div');
+  el.className   = 'tpl-thumb-fallback';
+  el.textContent = '🖼️';
+  return el;
+}
+
+// panggil saat halaman siap
+renderCustomFrameButtons();
   const n = mode === 'together'
     ? LAYOUTS_TOGETHER[currentLayout].count
     : LAYOUTS[currentLayout].count;
@@ -764,7 +811,6 @@ function waitUntil(timestamp) {
 }
 
 async function runCaptureSequence(cdSecs = 3) {
-  // nonaktifkan tombol jepret di kedua user selama proses
   shutterBtn.disabled = true;
   capturedPhotos = [];
   peerPhotos     = {};
@@ -773,15 +819,29 @@ async function runCaptureSequence(cdSecs = 3) {
     ? LAYOUTS_TOGETHER[currentLayout].count
     : LAYOUTS[currentLayout].count;
 
-  // rebuild dots segar setiap sesi
   buildProgressDots();
   const dots = progressRow.querySelectorAll('.progress-dot');
+  const isManual = !cdSecs || cdSecs === 0;
 
   for (let i = 0; i < n; i++) {
-    // update progress dot
     dots.forEach(d => d.classList.remove('current'));
     if (dots[i]) dots[i].classList.add('current');
-    stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
+
+    if (isManual) {
+      // mode manual: aktifkan tombol lagi supaya user bisa klik tiap foto
+      if (i > 0) {
+        shutterBtn.disabled = false;
+        shutterBtn.textContent = `📸 Jepret foto ${i+1}/${n}`;
+        stageNote.textContent = `✋ klik Jepret untuk foto ${i+1} dari ${n}`;
+        await waitForShutter();
+        shutterBtn.disabled = true;
+        shutterBtn.textContent = '📸 Jepret!';
+      } else {
+        stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
+      }
+    } else {
+      stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
+    }
 
     await countdownAnim(cdSecs);
 
@@ -791,22 +851,19 @@ async function runCaptureSequence(cdSecs = 3) {
       capturedPhotos.push(dataUrl);
     } else {
       capturedPhotos[i] = dataUrl;
-      // kirim foto kita ke peer
       if (ws?.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'photo', dataUrl, index: i }));
       }
     }
 
-    // efek flash
     flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go');
-
-    // update dot jadi done
     if (dots[i]) { dots[i].classList.remove('current'); dots[i].classList.add('done'); }
     stageNote.textContent = `✅ foto ${i+1} diambil!`;
     await sleep(500);
   }
 
   shutterBtn.disabled = false;
+  shutterBtn.textContent = '📸 Jepret!';
 
   if (mode === 'solo') {
     stageNote.textContent = '✨ menyusun foto…';
@@ -818,12 +875,19 @@ async function runCaptureSequence(cdSecs = 3) {
   }
 }
 
+// tunggu user klik shutterBtn (untuk mode manual foto ke-2 dst)
+function waitForShutter() {
+  return new Promise(resolve => {
+    shutterBtn.addEventListener('click', resolve, { once: true });
+  });
+}
+
 async function countdownAnim(seconds) {
-  // mode manual — langsung ambil foto tanpa countdown
+  // mode manual — tampilkan indikator lalu langsung ambil
   if (!seconds || seconds === 0) {
     countdownEl.style.display = 'flex';
     countdownEl.textContent   = '📸';
-    await sleep(200);
+    await sleep(400);
     countdownEl.style.display = 'none';
     return;
   }
@@ -876,8 +940,11 @@ async function composeCanvas_solo(photos) {
   const theme = ALL_THEMES[currentTheme];
   const cfg   = LAYOUTS[currentLayout];
 
-  // pre-load frame gambar kalau ada
-  if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
+  // pre-load frame gambar kalau ada (pakai _getUrl untuk custom frames)
+  if (theme._getUrl) {
+    const frameUrl = theme._getUrl('solo', currentLayout);
+    if (frameUrl) await loadFrameImg(frameUrl);
+  } else if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
     await loadFrameImg(theme._frameUrl);
   }
 
@@ -902,7 +969,7 @@ async function composeCanvas_solo(photos) {
   });
 
   // 3. dekorasi/frame di ATAS foto
-  theme.drawDeco(ctx, W, H, []);
+  theme.drawDeco(ctx, W, H, [], 'solo', currentLayout);
 }
 
 // ===== Canvas: together =====
@@ -911,8 +978,11 @@ async function composeCanvas_together(youPhotos, theirPhotos) {
   const cfg    = LAYOUTS_TOGETHER[currentLayout];
   const n      = cfg.count;
 
-  // pre-load frame gambar kalau ada
-  if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
+  // pre-load frame gambar kalau ada (pakai _getUrl untuk custom frames)
+  if (theme._getUrl) {
+    const frameUrl = theme._getUrl('together', currentLayout);
+    if (frameUrl) await loadFrameImg(frameUrl);
+  } else if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
     await loadFrameImg(theme._frameUrl);
   }
 
@@ -942,7 +1012,7 @@ async function composeCanvas_together(youPhotos, theirPhotos) {
     drawRowLabel(ctx, 'kamu',  theme.accent, outerPad,           outerPad - 20, cellW*2+gap);
     drawRowLabel(ctx, 'teman', theme.accent, outerPad, outerPad+cellH+gap - 20, cellW*2+gap);
 
-    theme.drawDeco(ctx, W, H, []);
+    theme.drawDeco(ctx, W, H, [], 'together', currentLayout);
 
   } else {
     // ── ROWS: tiap baris = kamu | teman ──
@@ -964,7 +1034,7 @@ async function composeCanvas_together(youPhotos, theirPhotos) {
       drawPhotoCard(ctx, theirImgs[i], outerPad+cellW+gap, y, cellW, cellH, theme);
     }
 
-    theme.drawDeco(ctx, W, H, []);
+    theme.drawDeco(ctx, W, H, [], 'together', currentLayout);
   }
 }
 
