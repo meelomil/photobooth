@@ -432,10 +432,26 @@ video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
 .swatch.active { border-color:var(--pink); transform:scale(1.12); }
 
 /* ── result ── */
-#screenResult { padding-top:20px; }
-.result-frame { background:var(--white); padding:12px; border-radius:20px; box-shadow:var(--shadow); border:2px solid var(--pink-soft); max-width:96vw; }
-#resultCanvas { max-width:100%; display:block; border-radius:10px; }
-.result-actions { display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; justify-content:center; }
+#screenResult {
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#screenResult .hero.small { padding: 10px 20px 10px; flex-shrink:0; }
+.result-frame {
+  background: var(--white);
+  padding: 12px;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  border: 2px solid var(--pink-soft);
+  max-width: 96vw;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+#resultCanvas { max-width: 100%; display: block; border-radius: 10px; }
+.result-actions { display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; justify-content:center; flex-shrink:0; }
 .result-actions button { font-family:'Poppins',sans-serif; font-weight:600; font-size:13px; padding:12px 22px; border-radius:14px; cursor:pointer; }
 #downloadBtn { background:linear-gradient(135deg,var(--pink),#ff9ec4); color:#fff; border:none; box-shadow:0 8px 20px rgba(255,111,165,.35); }
 #retakeBtn   { background:var(--bg); color:var(--ink); border:2px solid var(--pink-soft); }
