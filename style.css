@@ -141,54 +141,87 @@ body {
 /* ── booth layout 2 kolom ── */
 #screenBooth {
   align-items: stretch;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding: 0 20px 20px;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .booth-wrap {
-  width:100%;
-  max-width:1100px;
-  margin: 0 auto 0;
-  display:grid;
-  grid-template-columns: 300px 1fr;
-  gap:20px;
-  align-items:start;
-  margin-top:8px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  align-items: start;
+  flex: 1;
+  height: calc(100vh - 90px);
+  overflow: hidden;
 }
 
 /* KOLOM KIRI — controls scrollable */
 .booth-left {
-  background:var(--white);
-  border:2px solid var(--pink-soft);
-  border-radius:var(--radius);
-  padding:18px 16px 14px;
-  box-shadow:var(--shadow);
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-  max-height:calc(100vh - 120px);
-  overflow-y:auto;
-  position:sticky;
-  top:16px;
+  background: var(--white);
+  border: 2px solid var(--pink-soft);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
 }
-.booth-left::-webkit-scrollbar { width:4px; }
-.booth-left::-webkit-scrollbar-thumb { background:var(--pink-soft); border-radius:4px; }
+.booth-left::-webkit-scrollbar { width: 4px; }
+.booth-left::-webkit-scrollbar-thumb { background: var(--pink-soft); border-radius: 4px; }
 
 /* KOLOM KANAN — kamera + progress + jepret */
 .booth-right {
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  align-items:stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  height: 100%;
+  overflow: hidden;
 }
 
-.cameras { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; width:100%; }
+/* kamera mengisi sisa ruang */
+.cameras {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: nowrap;
+  flex: 1;
+  min-height: 0;
+}
 
 .cam-box {
-  display:flex; flex-direction:column; align-items:stretch;
-  gap:8px; flex:1; min-width:220px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
-.cam-box.hidden { display:none; }
+.cam-box.hidden { display: none; }
+
+.video-frame {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  background: #111;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2.5px solid var(--pink-soft);
+}
+
+/* hapus aspect-ratio agar menyesuaikan tinggi tersisa */
+.video-frame { aspect-ratio: unset; }
 
 /* bar di atas kamera: label kiri, tombol switch kanan */
 .cam-top-bar {
@@ -319,13 +352,14 @@ video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
 .stage-note { font-size:12px; color:var(--ink-soft); margin:0; text-align:center; }
 
 /* ctrl-section di dalam booth-left */
-.ctrl-section label { display:block; font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft); margin-bottom:7px; }
-.option-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+.ctrl-section { margin-bottom: 2px; }
+.ctrl-section label { display:block; font-size:10px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft); margin-bottom:5px; }
+.option-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:5px; }
 .opt-btn {
   background:var(--bg); border:2px solid transparent;
-  border-radius:12px; color:var(--ink);
-  font-family:'Poppins',sans-serif; font-size:12px; font-weight:500;
-  padding:9px 4px; cursor:pointer; text-align:center; transition:all .14s ease;
+  border-radius:10px; color:var(--ink);
+  font-family:'Poppins',sans-serif; font-size:11px; font-weight:500;
+  padding:7px 4px; cursor:pointer; text-align:center; transition:all .14s ease;
 }
 .opt-btn:hover  { border-color:var(--pink-soft); }
 .opt-btn.active { background:var(--pink); color:#fff; border-color:var(--pink); font-weight:600; }
