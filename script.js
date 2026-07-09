@@ -817,9 +817,11 @@ async function runCaptureSequence(cdSecs = 3) {
   capturedPhotos = [];
   peerPhotos     = {};
 
+  // simpan nilai n di awal agar tidak berubah saat loop
+  const layout = currentLayout;
   const n = mode === 'together'
-    ? LAYOUTS_TOGETHER[currentLayout].count
-    : LAYOUTS[currentLayout].count;
+    ? LAYOUTS_TOGETHER[layout].count
+    : LAYOUTS[layout].count;
 
   buildProgressDots();
   const dots = progressRow.querySelectorAll('.progress-dot');
@@ -829,18 +831,13 @@ async function runCaptureSequence(cdSecs = 3) {
     dots.forEach(d => d.classList.remove('current'));
     if (dots[i]) dots[i].classList.add('current');
 
-    if (isManual) {
-      // mode manual: aktifkan tombol lagi supaya user bisa klik tiap foto
-      if (i > 0) {
-        shutterBtn.disabled = false;
-        shutterBtn.textContent = `📸 Jepret foto ${i+1}/${n}`;
-        stageNote.textContent = `✋ klik Jepret untuk foto ${i+1} dari ${n}`;
-        await waitForShutter();
-        shutterBtn.disabled = true;
-        shutterBtn.textContent = '📸 Jepret!';
-      } else {
-        stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
-      }
+    if (isManual && i > 0) {
+      shutterBtn.disabled = false;
+      shutterBtn.textContent = `📸 Jepret foto ${i+1}/${n}`;
+      stageNote.textContent = `✋ klik Jepret untuk foto ${i+1} dari ${n}`;
+      await waitForShutter();
+      shutterBtn.disabled = true;
+      shutterBtn.textContent = '📸 Jepret!';
     } else {
       stageNote.textContent = `📸 foto ${i+1} dari ${n}`;
     }
@@ -861,7 +858,7 @@ async function runCaptureSequence(cdSecs = 3) {
     flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go');
     if (dots[i]) { dots[i].classList.remove('current'); dots[i].classList.add('done'); }
     stageNote.textContent = `✅ foto ${i+1} diambil!`;
-    await sleep(500);
+    await sleep(400);
   }
 
   shutterBtn.disabled = false;
@@ -869,8 +866,13 @@ async function runCaptureSequence(cdSecs = 3) {
 
   if (mode === 'solo') {
     stageNote.textContent = '✨ menyusun foto…';
-    await composeCanvas_solo(capturedPhotos);
-    showScreen('screenResult');
+    try {
+      await composeCanvas_solo(capturedPhotos);
+      showScreen('screenResult');
+    } catch(err) {
+      console.error('compose error:', err);
+      stageNote.textContent = '⚠️ Gagal menyusun foto, coba lagi';
+    }
   } else {
     stageNote.textContent = '⏳ menunggu foto dari teman… ♡';
     checkAndComposeTogather();
