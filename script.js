@@ -942,12 +942,13 @@ async function composeCanvas_solo(photos) {
   const theme = ALL_THEMES[currentTheme];
   const cfg   = LAYOUTS[currentLayout];
 
-  // pre-load frame gambar kalau ada (pakai _getUrl untuk custom frames)
+  // pre-load frame — tunggu sampai benar-benar selesai
   if (theme._getUrl) {
     const frameUrl = theme._getUrl('solo', currentLayout);
-    if (frameUrl) await loadFrameImg(frameUrl);
-  } else if (theme._frameUrl && !theme._frameUrl.includes('USERNAME')) {
-    await loadFrameImg(theme._frameUrl);
+    if (frameUrl) {
+      stageNote.textContent = '⏳ memuat frame…';
+      await loadFrameImg(frameUrl);
+    }
   }
 
   const imgs = await Promise.all(photos.map(loadImg));
