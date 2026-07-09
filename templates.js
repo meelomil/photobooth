@@ -227,11 +227,11 @@ const CUSTOM_FRAMES = {};
       if (img) {
         ctx.drawImage(img, 0, 0, W, H);
       } else {
-        // placeholder border
+        // placeholder border tipis
         ctx.strokeStyle = this.accent;
-        ctx.lineWidth = 4;
-        ctx.setLineDash([12, 8]);
-        ctx.strokeRect(12, 12, W - 24, H - 24);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 7]);
+        ctx.strokeRect(8, 8, W - 16, H - 16);
         ctx.setLineDash([]);
       }
       ctx.font = "700 18px 'Caveat',Georgia,serif";
