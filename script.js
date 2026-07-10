@@ -451,17 +451,19 @@ function createPeerConnection() {
     console.log('ontrack:', e.track.kind, e.streams.length);
 
     if (e.track.kind === 'video') {
-      // pastikan srcObject selalu diupdate
       if (e.streams && e.streams[0]) {
         remoteStream = e.streams[0];
       } else {
-        // fallback: buat MediaStream dari track langsung
         remoteStream = new MediaStream([e.track]);
       }
-      videoPeer.srcObject = remoteStream;
-      videoPeer.play().catch(err => console.warn('videoPeer play error:', err));
-      connectingOverlay.style.display = 'none';
-      stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+      // paksa set srcObject dan play
+      videoPeer.srcObject = null;
+      setTimeout(() => {
+        videoPeer.srcObject = remoteStream;
+        videoPeer.play().catch(err => console.warn('videoPeer play:', err));
+        connectingOverlay.style.display = 'none';
+        stageNote.textContent = '🎀 tersambung! pilih layout & tekan jepret!';
+      }, 100);
 
     } else if (e.track.kind === 'audio') {
       const peerAudio = document.getElementById('peerAudio');
