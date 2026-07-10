@@ -48,21 +48,34 @@ body {
 
 /* ── screen system ── */
 .screen {
-  position:relative; z-index:1;
-  display:none; flex-direction:column; align-items:center;
-  min-height:100vh; padding:0 16px 60px;
+  position: relative;
+  z-index: 1;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 0 16px 60px;
 }
-.screen.active { display:flex; }
+.screen.active { display: flex; }
 
-/* pastikan screenHome dan isinya bisa diklik */
-#screenHome {
-  position:relative;
-  z-index:2;
+/* screenBooth override */
+#screenBooth.active {
+  align-items: stretch;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-#screenHome .mode-cards,
-#screenHome .mode-card {
-  position:relative;
-  z-index:3;
+
+/* screenResult tampil normal dengan scroll */
+#screenResult.active {
+  align-items: center;
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+  display: flex;
 }
 
 /* ── hero ── */
@@ -467,20 +480,33 @@ video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
 }
 .btn-primary:hover { transform:translateY(-2px); }
 
-.btn-back { margin-top:24px; background:transparent; border:2px solid var(--pink-soft); border-radius:12px; color:var(--ink-soft); font-family:'Poppins',sans-serif; font-size:13px; padding:9px 18px; cursor:pointer; }
-.btn-back:hover { border-color:var(--pink); color:var(--ink); }
+.btn-back {
+  margin-top: 24px;
+  background: transparent;
+  border: 2px solid var(--pink-soft);
+  border-radius: 12px;
+  color: var(--ink-soft);
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+.btn-back:hover { border-color: var(--pink); color: var(--ink); }
 
+/* di screenBooth, tombol kembali jadi floating kecil */
 #screenBooth .btn-back {
   position: fixed;
   bottom: 12px;
-  left: 16px;
+  left: 12px;
   margin: 0;
   font-size: 11px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   z-index: 100;
-  background: var(--white);
-  opacity: 0.85;
+  background: rgba(255,255,255,0.9);
 }
+
+/* di screenHome, sembunyikan tombol kembali */
+#screenHome .btn-back { display: none; }
 
 /* ── Chat & Call FAB + Panel ── */
 .comm-fab {
